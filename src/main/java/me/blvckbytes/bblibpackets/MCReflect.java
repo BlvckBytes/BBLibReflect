@@ -138,18 +138,6 @@ public class MCReflect {
     return invokeMethodByName(cw, "getHandle", new Class[]{});
   }
 
-  /**
-   * Register a command using the CraftServer's command map and thus
-   * bypassing the tedious plugin.yml registrations
-   * @param name Name of the command
-   * @param command Command handler
-   * @return Success state
-   */
-  public void registerCommand(String name, Command command) throws Exception {
-    Object cmdMap = invokeMethodByName(getCraftServer(), "getCommandMap", null);
-    findMethodByName(cmdMap.getClass(), "register", String.class, Command.class).invoke(cmdMap, name, command);
-  }
-
   //=========================================================================//
   //                             Field Iteration                             //
   //=========================================================================//
