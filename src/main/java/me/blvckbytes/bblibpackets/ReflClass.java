@@ -66,6 +66,10 @@ public enum ReflClass {
     "net.minecraft.network.protocol.game.PacketPlayOutSetSlot",
     "net.minecraft.server.{v}.PacketPlayOutSetSlot"
   ),
+  PACKET_O_WINDOW_DATA(
+    "net.minecraft.network.protocol.game.PacketPlayOutWindowData",
+    "net.minecraft.server.{v}.PacketPlayOutWindowData"
+  ),
   PACKET_I_B_EDIT(
     "net.minecraft.network.protocol.game.PacketPlayInBEdit",
     "net.minecraft.server.{v}.PacketPlayInBEdit"

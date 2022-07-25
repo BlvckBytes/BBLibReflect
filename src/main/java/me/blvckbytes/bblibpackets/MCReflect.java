@@ -12,7 +12,6 @@ import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.command.Command;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -42,6 +41,9 @@ public class MCReflect {
   private final ILogger logger;
   private final Map<Material, Integer> burningTimes;
   private final Map<ReflClass, Class<?>> reflClasses;
+
+  // Window ID getter function cache
+  private Function<Player, Integer> widAccess;
 
   @Getter
   private final boolean refactoredNetwork;
@@ -944,6 +946,9 @@ public class MCReflect {
    * Find access to the active window ID of a player
    */
   public Function<Player, Integer> getWidAccess() {
+    if (this.widAccess != null)
+      return this.widAccess;
+
     try {
       Class<?> ehC = getReflClass(ReflClass.ENTITY_HUMAN);
       Class<?> cC = getReflClass(ReflClass.CONTAINER);
@@ -969,7 +974,7 @@ public class MCReflect {
 
       // Get the container at runtime and then access it's ID field
       Field finalContainerField = containerField;
-      return p -> {
+      this.widAccess = p -> {
         try {
           Object container = finalContainerField.get(getEntityPlayer(p));
           return (int) wIdF.get(container);
@@ -977,6 +982,8 @@ public class MCReflect {
           return 0;
         }
       };
+
+      return this.widAccess;
     } catch (Exception e) {
       return p -> 0;
     }
