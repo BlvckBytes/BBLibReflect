@@ -4,17 +4,18 @@ import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
 import me.blvckbytes.bblibreflect.MCReflect;
+import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.permissions.PermissibleBase;
 import org.bukkit.permissions.PermissionAttachmentInfo;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -43,7 +44,7 @@ public class PermissionListener implements Listener, IAutoConstructed {
   private static final long DEBOUNCE_TICKS = 10;
 
   private final MCReflect refl;
-  private final JavaPlugin plugin;
+  private final APlugin plugin;
   private final ILogger logger;
 
   // Vanilla references of the proxied field for every player
@@ -54,7 +55,7 @@ public class PermissionListener implements Listener, IAutoConstructed {
 
   public PermissionListener(
     @AutoInject MCReflect refl,
-    @AutoInject JavaPlugin plugin,
+    @AutoInject APlugin plugin,
     @AutoInject ILogger logger
   ) {
     this.refl = refl;
@@ -88,12 +89,12 @@ public class PermissionListener implements Listener, IAutoConstructed {
   //=========================================================================//
 
   @EventHandler(priority = EventPriority.LOWEST)
-  public void onJoin(PlayerJoinEvent e) {
+  public void onLogin(PlayerLoginEvent e) {
     // Proxy on join
     proxyPermissions(e.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.LOWEST)
+  @EventHandler(priority = EventPriority.HIGHEST)
   public void onQuit(PlayerQuitEvent e) {
     // Unproxy on quit
     unproxyPermissions(e.getPlayer());
@@ -198,37 +199,44 @@ public class PermissionListener implements Listener, IAutoConstructed {
       new InvocationHandler() {
 
         // Handle of the debounce task used to debounce map call bursts
-        private int debounceTask = -1;
+        private BukkitTask debounceTask = null;
+        private long debounceCreation = 0;
 
         // Lock to synchronize map calls (as I don't know all possible callers)
         private final ReentrantLock lock = new ReentrantLock();
 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-          // Only act on modifying requests
-          if (!(
-            method.getName().equals("put") ||
-            method.getName().equals("putAll") ||
-            method.getName().equals("remove")
-          ))
+          // Only intercept on adding items (done after clearing when recalculating recursively)
+          if (!method.getName().equals("put"))
             return method.invoke(permissions, args);
 
-          // Lock while operating on the map
-          lock.lock();
+          if (
+            // No debounce task created yet
+            debounceTask == null ||
+            // Or the previously created task has reached more than half of it's lifespan
+            System.currentTimeMillis() - debounceCreation > (DEBOUNCE_TICKS * (1000 / 20 / 2))
+          ) {
 
-          // Cancel the previous debounce task
-          if (debounceTask >= 0) {
-            Bukkit.getScheduler().cancelTask(debounceTask);
-            debounceTask = -1;
+            // Lock while operating on the local debounce task handle
+            lock.lock();
+
+            // Cancel the previous debounce task
+            if (debounceTask != null) {
+              debounceTask.cancel();
+              debounceTask = null;
+            }
+
+            // Create a new debounce task
+            debounceCreation = System.currentTimeMillis();
+            debounceTask = plugin.runTask(() -> {
+              onPermissionChange(p, getPermissions(permissions));
+              debounceTask = null;
+            }, DEBOUNCE_TICKS);
+
+            // Done with operations, unlock
+            lock.unlock();
           }
-
-          // Create a new debounce task
-          debounceTask = Bukkit.getScheduler().scheduleSyncDelayedTask(
-            plugin, () -> onPermissionChange(p, getPermissions(permissions)), DEBOUNCE_TICKS
-          );
-
-          // Done with operations, unlock
-          lock.unlock();
 
           return method.invoke(permissions, args);
         }
@@ -248,13 +256,11 @@ public class PermissionListener implements Listener, IAutoConstructed {
       Object pb = refl.getFieldByType(cp, PermissibleBase.class, 0);
       Map<String, PermissionAttachmentInfo> perms = (Map<String, PermissionAttachmentInfo>) refl.getFieldByName(pb, "permissions");
 
-      // Call initially
-      onPermissionChange(p, getPermissions(perms));
-
-      // Set field to to the proxy reference
-      if (refl.setFieldByName(pb, "permissions", createPermissionProxy(p, perms)))
+      // Set field to the proxy reference
+      if (refl.setFieldByName(pb, "permissions", createPermissionProxy(p, perms))) {
         // Save the vanilla reference
         this.vanillaRefs.put(p, perms);
+      }
     } catch (Exception e) {
       logger.logError(e);
     }
