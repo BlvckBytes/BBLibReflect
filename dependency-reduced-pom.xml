@@ -30,19 +30,19 @@
           <relocations>
             <relocation>
               <pattern>me.blvckbytes.bblibdi</pattern>
-              <shadedPattern>me.blvckbytes.bblibpackets.di</shadedPattern>
+              <shadedPattern>me.blvckbytes.bblibreflect.di</shadedPattern>
             </relocation>
             <relocation>
               <pattern>me.blvckbytes.bblibutil</pattern>
-              <shadedPattern>me.blvckbytes.bblibpackets.util</shadedPattern>
+              <shadedPattern>me.blvckbytes.bblibreflect.util</shadedPattern>
             </relocation>
             <relocation>
               <pattern>me.blvckbytes.bblibpersistence</pattern>
-              <shadedPattern>me.blvckbytes.bblibpackets.persistence</shadedPattern>
+              <shadedPattern>me.blvckbytes.bblibreflect.persistence</shadedPattern>
             </relocation>
             <relocation>
               <pattern>me.blvckbytes.bblibconfig</pattern>
-              <shadedPattern>me.blvckbytes.bblibpackets.config</shadedPattern>
+              <shadedPattern>me.blvckbytes.bblibreflect.config</shadedPattern>
             </relocation>
           </relocations>
           <filters>

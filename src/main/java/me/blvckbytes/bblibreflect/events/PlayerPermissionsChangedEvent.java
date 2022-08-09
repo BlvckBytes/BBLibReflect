@@ -1,4 +1,4 @@
-package me.blvckbytes.bblibpackets.events;
+package me.blvckbytes.bblibreflect.events;
 
 import lombok.Getter;
 import org.bukkit.entity.Player;

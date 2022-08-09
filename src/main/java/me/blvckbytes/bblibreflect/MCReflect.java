@@ -1,4 +1,4 @@
-package me.blvckbytes.bblibpackets;
+package me.blvckbytes.bblibreflect;
 
 import com.google.common.primitives.Primitives;
 import io.netty.buffer.ByteBuf;

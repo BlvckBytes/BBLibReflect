@@ -1,4 +1,4 @@
-package me.blvckbytes.bblibpackets;
+package me.blvckbytes.bblibreflect;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

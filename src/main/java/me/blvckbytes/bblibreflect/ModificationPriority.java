@@ -1,4 +1,4 @@
-package me.blvckbytes.bblibpackets;
+package me.blvckbytes.bblibreflect;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>

@@ -1,4 +1,4 @@
-package me.blvckbytes.bblibpackets;
+package me.blvckbytes.bblibreflect;
 
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;

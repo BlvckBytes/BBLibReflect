@@ -1,4 +1,4 @@
-package me.blvckbytes.bblibpackets;
+package me.blvckbytes.bblibreflect;
 
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
