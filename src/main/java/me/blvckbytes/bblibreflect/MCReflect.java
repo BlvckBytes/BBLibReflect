@@ -32,6 +32,19 @@ import java.util.stream.Collectors;
   A big collection of routines that handle reflective R/W access to
   all fields related to minecraft like networking, commands, enumerations,
   players and just the standard java class members.
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU Affero General Public License as published
+  by the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Affero General Public License for more details.
+
+  You should have received a copy of the GNU Affero General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
 public class MCReflect {
