@@ -1,6 +1,7 @@
 package me.blvckbytes.bblibreflect;
 
 import com.google.common.primitives.Primitives;
+import com.google.gson.JsonElement;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -954,6 +955,54 @@ public class MCReflect {
   //=========================================================================//
   //                                 Players                                 //
   //=========================================================================//
+
+  /**
+   * Create an IChatBaseComponent by running a json string through the
+   * @param json JSON to create from
+   */
+  public Object chatComponentFromJson(JsonElement json) throws Exception {
+    Class<?> sC = getReflClass(ReflClass.CHAT_SERIALIZER);
+    Method fromString = findMethodByArgsOnly(sC, JsonElement.class).orElseThrow();
+    return fromString.invoke(null, json);
+  }
+
+  /**
+   * Send a message to the player after running it through the ChatSerializer
+   * @param p Target player
+   * @param message Message to send
+   */
+  @SuppressWarnings("unchecked")
+  public boolean sendSerialized(Player p, JsonElement message, int slot) {
+    try {
+      Class<?> cC = getReflClass(ReflClass.I_CHAT_BASE_COMPONENT);
+      Class<?> chatC = getReflClass(ReflClass.PACKET_O_CHAT);
+      Class<? extends Enum<?>> typeC = (Class<? extends Enum<?>>) getReflClass(ReflClass.CHAT_MESSAGE_TYPE);
+
+      Object component = chatComponentFromJson(message);
+      Object packet = createPacket(chatC);
+
+      setFieldByType(packet, cC, component, 0);
+
+      Enum<?> targetType = null;
+      for (Enum<?> type : typeC.getEnumConstants()) {
+        if (type.ordinal() != slot)
+          continue;
+
+        targetType = type;
+        break;
+      }
+
+      if (targetType == null)
+        return false;
+
+      setFieldByType(packet, typeC, targetType, 0);
+
+      return sendPacket(p, packet);
+    } catch (Exception e) {
+      logger.logError(e);
+      return false;
+    }
+  }
 
   /**
    * Find access to the active window ID of a player

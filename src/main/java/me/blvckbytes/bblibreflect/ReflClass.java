@@ -35,6 +35,18 @@ public enum ReflClass {
     "net.minecraft.network.protocol.Packet",
     "net.minecraft.server.{v}.Packet"
   ),
+  I_CHAT_BASE_COMPONENT(
+    "net.minecraft.network.chat.IChatBaseComponent",
+    "net.minecraft.server.{v}.NetworkManager"
+  ),
+  CHAT_SERIALIZER(
+    "net.minecraft.network.chat.IChatBaseComponent$ChatSerializer",
+    "net.minecraft.server.{v}.IChatBaseComponent$ChatSerializer"
+  ),
+  CHAT_MESSAGE_TYPE(
+    "net.minecraft.network.chat.ChatMessageType",
+    "net.minecraft.server.{v}.ChatMessageType"
+  ),
   NETWORK_MANAGER(
     "net.minecraft.network.NetworkManager",
     "net.minecraft.server.{v}.NetworkManager"
@@ -71,13 +83,13 @@ public enum ReflClass {
     "net.minecraft.network.chat.ChatComponentText",
     "net.minecraft.server.{v}.ChatComponentText"
   ),
-  CHAT_MESSAGE_TYPE(
-    "net.minecraft.network.chat.ChatMessageType",
-    "net.minecraft.server.{v}.ChatMessageType"
-  ),
   PACKET_O_SET_SLOT(
     "net.minecraft.network.protocol.game.PacketPlayOutSetSlot",
     "net.minecraft.server.{v}.PacketPlayOutSetSlot"
+  ),
+  PACKET_O_CHAT(
+    "net.minecraft.network.protocol.game.PacketPlayOutChat",
+    "net.minecraft.server.{v}.PacketPlayOutChat"
   ),
   PACKET_O_WINDOW_DATA(
     "net.minecraft.network.protocol.game.PacketPlayOutWindowData",
