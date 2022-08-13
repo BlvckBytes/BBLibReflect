@@ -969,11 +969,11 @@ public class MCReflect {
 
   /**
    * Send a message to the player after running it through the ChatSerializer
-   * @param p Target player
+   * @param receiver Target receiver
    * @param message Message to send
    */
   @SuppressWarnings("unchecked")
-  public boolean sendSerialized(Player p, JsonElement message, int slot) {
+  public boolean sendSerialized(IPacketReceiver receiver, JsonElement message, int slot) {
     try {
       Class<?> cC = getReflClass(ReflClass.I_CHAT_BASE_COMPONENT);
       Class<?> chatC = getReflClass(ReflClass.PACKET_O_CHAT);
@@ -997,8 +997,8 @@ public class MCReflect {
         return false;
 
       setFieldByType(packet, typeC, targetType, 0);
-
-      return sendPacket(p, packet);
+      receiver.sendPackets(packet);
+      return true;
     } catch (Exception e) {
       logger.logError(e);
       return false;
