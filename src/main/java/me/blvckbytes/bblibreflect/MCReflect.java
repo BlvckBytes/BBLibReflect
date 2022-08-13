@@ -888,9 +888,10 @@ public class MCReflect {
    * Get a version specific reflection handled class
    * @param rc Class to get
    */
-  public Class<?> getReflClass(ReflClass rc) {
+  public @Nullable Class<?> getReflClass(ReflClass rc) {
     Class<?> c = reflClasses.get(rc);
-    if (c != null)
+
+    if (reflClasses.containsKey(rc))
       return c;
 
     try {

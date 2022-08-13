@@ -2,6 +2,7 @@ package me.blvckbytes.bblibreflect;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.jetbrains.annotations.Nullable;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -95,6 +96,26 @@ public enum ReflClass {
     "net.minecraft.network.protocol.game.PacketPlayOutWindowData",
     "net.minecraft.server.{v}.PacketPlayOutWindowData"
   ),
+  PACKET_O_TITLE(
+    "",
+    "net.minecraft.server.{v}.PacketPlayOutTitle"
+  ),
+  ENUM_TITLE_ACTION(
+    "",
+    "net.minecraft.server.{v}.PacketPlayOutTitle$EnumTitleAction"
+  ),
+  CLIENTBOUND_TITLES_ANIMATION(
+    "net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket",
+    ""
+  ),
+  CLIENTBOUND_TITLE_SET(
+    "net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket",
+    ""
+  ),
+  CLIENTBOUND_SUBTITLE_SET(
+    "net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket",
+    ""
+  ),
   PACKET_I_B_EDIT(
     "net.minecraft.network.protocol.game.PacketPlayInBEdit",
     "net.minecraft.server.{v}.PacketPlayInBEdit"
@@ -155,7 +176,11 @@ public enum ReflClass {
 
   private final String afterRefactor, beforeRefactor;
 
-  public Class<?> resolve(boolean afterRefactor, String version) throws ClassNotFoundException {
-    return Class.forName((afterRefactor ? this.afterRefactor : this.beforeRefactor).replace("{v}", version));
+  public @Nullable Class<?> resolve(boolean afterRefactor, String version) throws ClassNotFoundException {
+    try {
+      return Class.forName((afterRefactor ? this.afterRefactor : this.beforeRefactor).replace("{v}", version));
+    } catch (Exception e) {
+      return null;
+    }
   }
 }
