@@ -1,5 +1,7 @@
 package me.blvckbytes.bblibreflect;
 
+import org.bukkit.entity.Player;
+
 import java.util.UUID;
 
 /*
@@ -65,4 +67,12 @@ public interface IPacketInterceptor {
    * @return True if registered, false otherwise
    */
   boolean isRegisteredSpecific(UUID target, IPacketModifier modifier);
+
+  /**
+   * Get a player as a wrapped customizable viewer
+   * @param p Target player
+   * @return ICustomizableViewer instance
+   */
+  ICustomizableViewer getPlayerAsViewer(Player p);
+
 }

@@ -1,18 +1,17 @@
-package me.blvckbytes.bblibreflect;
+package me.blvckbytes.bblibreflect.communicator.parameter;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
-import java.util.function.Consumer;
-
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 07/17/2022
+  Created On: 08/14/2022
 
-  Wraps all parameters a book edit request requires to be processed.
+  A parameter used to define which slot to set to what item when using the
+  SetSlotCommunicator.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -27,10 +26,18 @@ import java.util.function.Consumer;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+@Setter
 @Getter
 @AllArgsConstructor
-public class BookEditRequest {
-  private ItemStack fakeItem;
-  private int fakeSlot;
-  private Consumer<@Nullable List<String>> callback;
+public class SetSlotParameter {
+
+  // Item to set
+  private @Nullable ItemStack item;
+
+  // Slot to set to
+  private int slot;
+
+  // True means top inventory, false targets the bottom inventory
+  private boolean top;
+
 }

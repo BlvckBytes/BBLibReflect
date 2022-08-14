@@ -1,15 +1,19 @@
-package me.blvckbytes.bblibreflect;
+package me.blvckbytes.bblibreflect.communicator.parameter;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Consumer;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 04/28/2022
+  Created On: 08/14/2022
 
-  Communicates managing a book editor GUI and retrieving the entered text.
+  A parameter used to define a book edit session as well as it's events.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -24,20 +28,21 @@ import java.util.function.Consumer;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface IBookEditorCommunicator {
+@Getter
+@Setter
+@AllArgsConstructor
+public class BookEditParameter {
 
-  /**
-   * Create a new book editor GUI request and retrieve it's pages after committing
-   * @param p Target player
-   * @param pages Initial pages to display
-   * @param submit Book pages after committing, null on cancel
-   * @return Success state
-   */
-  boolean initBookEditor(Player p, List<String> pages, Consumer<List<String>> submit);
+  // Target player
+  private Player player;
 
-  /**
-   * Quit an existing book editor session silently
-   * @param p Target player
-   */
-  void quitBookEditor(Player p);
+  // Pages to display initially
+  private List<String> pages;
+
+  // Callback for submitting the book edit
+  private Consumer<List<String>> submit;
+
+  // Optional Callback hook for cancelling the request prematurely
+  private @Nullable Consumer<Runnable> cancelHook;
+
 }

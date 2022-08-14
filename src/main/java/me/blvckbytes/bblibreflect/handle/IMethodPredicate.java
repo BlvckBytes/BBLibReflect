@@ -1,11 +1,12 @@
-package me.blvckbytes.bblibreflect;
+package me.blvckbytes.bblibreflect.handle;
+
+import java.lang.reflect.Method;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/13/2022
+  Created On: 08/14/2022
 
-  Represents a viewer of a customizable resource which will influence
-  it's representation based on their abilities.
+  A predicate function to search through a list of methods and find a match.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -20,16 +21,9 @@ package me.blvckbytes.bblibreflect;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface ICustomizableViewer extends IPacketReceiver {
+@FunctionalInterface
+public interface IMethodPredicate {
 
-  /**
-   * Get the currently open window ID of the player
-   */
-  int getCurrentWindowId();
-
-  /**
-   * Whether this viewer cannot render hex colors
-   */
-  boolean cannotRenderHexColors();
+  boolean matches(Method m, boolean isInsideSuperclass);
 
 }

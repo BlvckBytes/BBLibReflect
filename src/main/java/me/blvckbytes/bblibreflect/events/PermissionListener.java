@@ -3,7 +3,9 @@ package me.blvckbytes.bblibreflect.events;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
-import me.blvckbytes.bblibreflect.MCReflect;
+import me.blvckbytes.bblibreflect.AReflectedAccessor;
+import me.blvckbytes.bblibreflect.IReflectionHelper;
+import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -17,6 +19,7 @@ import org.bukkit.permissions.PermissibleBase;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -51,14 +54,12 @@ import java.util.stream.Collectors;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class PermissionListener implements Listener, IAutoConstructed {
+public class PermissionListener extends AReflectedAccessor implements Listener, IAutoConstructed {
 
   // Ticks that need to elapse until the last modifying call is actually routed
   private static final long DEBOUNCE_TICKS = 10;
 
-  private final MCReflect refl;
   private final APlugin plugin;
-  private final ILogger logger;
 
   // Vanilla references of the proxied field for every player
   private final Map<Player, Object> vanillaRefs;
@@ -66,15 +67,21 @@ public class PermissionListener implements Listener, IAutoConstructed {
   // The previous permission list (last permission change call) for every player
   private final Map<Player, List<String>> previousPermissions;
 
-  public PermissionListener(
-    @AutoInject MCReflect refl,
-    @AutoInject APlugin plugin,
-    @AutoInject ILogger logger
-  ) {
-    this.refl = refl;
-    this.plugin = plugin;
-    this.logger = logger;
+  private final Field F_CRAFT_PLAYER__PERMISSIBLE_BASE, F_PERMISSIBLE_BASE__PERMISSIONS;
 
+  public PermissionListener(
+    @AutoInject APlugin plugin,
+    @AutoInject ILogger logger,
+    @AutoInject IReflectionHelper helper
+  ) throws Exception {
+    super(logger, helper);
+
+    Class<?> C_CRAFT_PLAYER = requireClass(RClass.CRAFT_PLAYER);
+
+    F_CRAFT_PLAYER__PERMISSIBLE_BASE = requireScalarField(C_CRAFT_PLAYER, PermissibleBase.class, 0, true, false, null);
+    F_PERMISSIBLE_BASE__PERMISSIONS  = requireMapField(PermissibleBase.class, String.class, PermissionAttachmentInfo.class, Map.class, 0, false, false, null);
+
+    this.plugin = plugin;
     this.vanillaRefs = new HashMap<>();
     this.previousPermissions = new HashMap<>();
   }
@@ -170,13 +177,11 @@ public class PermissionListener implements Listener, IAutoConstructed {
 
     // Restore the vanilla reference
     try {
-      Object cp = refl.getCraftPlayer(p);
-      refl.setFieldByName(
-        refl.getFieldByType(cp, PermissibleBase.class, 0),
-        "permissions", vanillaRef
-      );
+      Object permissibleBase = F_CRAFT_PLAYER__PERMISSIBLE_BASE.get(p);
 
-      // Remove the undone ref
+      // Set field to the proxy reference
+      F_PERMISSIBLE_BASE__PERMISSIONS.set(permissibleBase, vanillaRef);
+
       vanillaRefs.remove(p);
     } catch (Exception e) {
       logger.logError(e);
@@ -265,15 +270,14 @@ public class PermissionListener implements Listener, IAutoConstructed {
   @SuppressWarnings("unchecked")
   private void proxyPermissions(Player p) {
     try {
-      Object cp = refl.getCraftPlayer(p);
-      Object pb = refl.getFieldByType(cp, PermissibleBase.class, 0);
-      Map<String, PermissionAttachmentInfo> perms = (Map<String, PermissionAttachmentInfo>) refl.getFieldByName(pb, "permissions");
+      Object permissibleBase = F_CRAFT_PLAYER__PERMISSIBLE_BASE.get(p);
+      Map<String, PermissionAttachmentInfo> perms = (Map<String, PermissionAttachmentInfo>) F_PERMISSIBLE_BASE__PERMISSIONS.get(permissibleBase);
 
       // Set field to the proxy reference
-      if (refl.setFieldByName(pb, "permissions", createPermissionProxy(p, perms))) {
-        // Save the vanilla reference
-        this.vanillaRefs.put(p, perms);
-      }
+      F_PERMISSIBLE_BASE__PERMISSIONS.set(permissibleBase, createPermissionProxy(p, perms));
+
+      // Save the vanilla reference
+      this.vanillaRefs.put(p, perms);
     } catch (Exception e) {
       logger.logError(e);
     }

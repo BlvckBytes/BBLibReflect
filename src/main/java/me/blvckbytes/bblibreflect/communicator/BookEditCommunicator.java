@@ -1,8 +1,12 @@
-package me.blvckbytes.bblibreflect;
+package me.blvckbytes.bblibreflect.communicator;
 
+import lombok.AllArgsConstructor;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
+import me.blvckbytes.bblibreflect.*;
+import me.blvckbytes.bblibreflect.communicator.parameter.BookEditParameter;
+import me.blvckbytes.bblibreflect.communicator.parameter.SetSlotParameter;
 import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -21,14 +25,16 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
-import java.util.function.Consumer;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 04/28/2022
+  Created On: 08/14/2022
 
-  Creates all packets in regard to managing a book editor GUI and retrieving it's text.
+  Communicates and manages adding a fake book item to the player's inventory which
+  can be edited and fires the completion callback as soon as that book has been signed.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -44,29 +50,43 @@ import java.util.function.Consumer;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketModifier, Listener, IAutoConstructed {
+public class BookEditCommunicator extends APacketCommunicator<BookEditParameter> implements IPacketModifier, Listener, IAutoConstructed {
 
-  private final MCReflect refl;
   private final APlugin plugin;
-  private final ILogger logger;
-  private final IFakeItemCommunicator fakeItem;
+  private final SetSlotCommunicator setSlot;
+  private final Map<Player, BookEditRequest> requests;
 
-  // Map of a player to their bookedit request
-  private final Map<Player, BookEditRequest> bookeditRequests;
+  private final @Nullable Field F_PI_BE_LINES, F_PI_BE_ITEM;
+  private final Class<?> C_PI_SCS, C_PI_BE;
+  private final Method M_CIS__AS_BUKKIT_COPY;
 
-  public BookEditorCommunicator(
-    @AutoInject MCReflect refl,
-    @AutoInject APlugin plugin,
+  public BookEditCommunicator(
     @AutoInject ILogger logger,
-    @AutoInject IPacketInterceptor interceptor,
-    @AutoInject IFakeItemCommunicator fakeItem
-  ) {
-    this.refl = refl;
-    this.plugin = plugin;
-    this.logger = logger;
-    this.fakeItem = fakeItem;
+    @AutoInject APlugin plugin,
+    @AutoInject IReflectionHelper helper,
+    @AutoInject SetSlotCommunicator setSlot,
+    @AutoInject IPacketInterceptor interceptor
+  ) throws Exception {
+    super(logger, helper);
 
-    this.bookeditRequests = Collections.synchronizedMap(new HashMap<>());
+    Class<?> C_CIS  = requireClass(RClass.CRAFT_ITEM_STACK);
+    Class<?> C_IS   = requireClass(RClass.ITEM_STACK);
+
+    C_PI_SCS = requireClass(RClass.PACKET_I_SET_CREATIVE_SLOT);
+    C_PI_BE  = requireClass(RClass.PACKET_I_B_EDIT);
+
+    M_CIS__AS_BUKKIT_COPY = requireNamedMethod(C_CIS, "asBukkitCopy", false);
+
+    F_PI_BE_LINES = optionalCollectionField(C_PI_BE, List.class, String.class, 0, false, false, null);
+    F_PI_BE_ITEM  = optionalCollectionField(C_PI_BE, List.class, C_IS, 0, false, false, null);
+
+    if (F_PI_BE_LINES == null && F_PI_BE_ITEM == null)
+      throw new IllegalStateException("Need one of the two fields.");
+
+    this.plugin = plugin;
+    this.setSlot = setSlot;
+    this.requests = Collections.synchronizedMap(new HashMap<>());
+
     interceptor.register(this, ModificationPriority.HIGH);
   }
 
@@ -74,8 +94,11 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
   //                                   API                                   //
   //=========================================================================//
 
+
   @Override
-  public boolean initBookEditor(Player p, List<String> pages, Consumer<List<String>> submit) {
+  public void sendParameterized(IPacketReceiver receiver, BookEditParameter parameter) {
+    Player p = parameter.getPlayer();
+
     // Cancel any previous requests
     undoFakeHand(p, false);
 
@@ -85,7 +108,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     // Apply all pages
     BookMeta bookMeta = (BookMeta) book.getItemMeta();
     if (bookMeta != null) {
-      for (String page : pages)
+      for (String page : parameter.getPages())
         bookMeta.addPage(page);
       bookMeta.setAuthor(p.getName());
       book.setItemMeta(bookMeta);
@@ -94,25 +117,25 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     plugin.runTask(() -> {
       // Set the book as a fake slot item
       int slot = p.getInventory().getHeldItemSlot();
-      fakeItem.setFakeInventorySlot(p, book, (slot + 36) % 36);
+      setSlot.sendParameterized(receiver, new SetSlotParameter(book, (slot + 36) % 36, false));
 
       // Register the request
-      this.bookeditRequests.put(p, new BookEditRequest(book, slot, submit));
+      this.requests.put(p, new BookEditRequest(receiver, parameter, book, slot));
+
+      // Set the cancel hook, if applicable
+      if (parameter.getCancelHook() != null) {
+        parameter.getCancelHook().accept(() -> {
+          requests.remove(p);
+          undoFakeHand(p, false);
+        });
+      }
     });
-
-    return true;
-  }
-
-  @Override
-  public void quitBookEditor(Player p) {
-    bookeditRequests.remove(p);
-    undoFakeHand(p, false);
   }
 
   @Override
   public void cleanup() {
     // Cancel all open book requests on unload
-    for (Player p : this.bookeditRequests.keySet())
+    for (Player p : this.requests.keySet())
       undoFakeHand(p, true);
   }
 
@@ -128,7 +151,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     Player p = e.getPlayer();
 
     // No active request
-    if (!bookeditRequests.containsKey(p))
+    if (!requests.containsKey(p))
       return;
 
     // Undo this fake hand if the player decides to leave the server
@@ -140,17 +163,17 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     Player p = e.getPlayer();
 
     // Not a fake book request
-    BookEditRequest req = bookeditRequests.get(p);
+    BookEditRequest req = requests.get(p);
     if (req == null)
       return;
 
     // Cancel the event for the server so nothing actually happens
     e.setCancelled(true);
 
-    // Re-set the slot back to the fake item after the gameloop ticked
+    // Re-set the slot back to the fake item after the game loop ticked
     // as the client will now have noticed and changed it back
     plugin.runTask(() -> {
-      fakeItem.setFakeTopInventorySlot(e.getPlayer(), req.getFakeItem(), (req.getFakeSlot() + 36) % 36);
+      setSlot.sendParameterized(req.receiver, new SetSlotParameter(req.fakeItem, (req.slot + 36) % 36, false));
     });
   }
 
@@ -162,7 +185,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     Player p = (Player) e.getPlayer();
 
     // No active request
-    if (!bookeditRequests.containsKey(p))
+    if (!requests.containsKey(p))
       return;
 
     // Undo this fake hand if the player decides to quit writing and open the inventory
@@ -177,7 +200,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     Player p = (Player) e.getWhoClicked();
 
     // No active request
-    if (!bookeditRequests.containsKey(p))
+    if (!requests.containsKey(p))
       return;
 
     // Undo this fake hand if the player decides to quit writing and clicks in their inventory
@@ -190,7 +213,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     Player p = e.getPlayer();
 
     // No active request
-    if (!bookeditRequests.containsKey(p))
+    if (!requests.containsKey(p))
       return;
 
     // Undo this fake hand if the player decides to quit writing and selects another slot
@@ -203,7 +226,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     Player p = e.getPlayer();
 
     // No active request
-    if (!bookeditRequests.containsKey(p))
+    if (!requests.containsKey(p))
       return;
 
     // Undo this fake hand if the player decides to quit writing and drop the book
@@ -216,9 +239,15 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
   //=========================================================================//
 
   @Override
-  public Object modifyIncoming(UUID sender, PacketSource ps, Object incoming) {
+  public Object modifyIncoming(IPacketReceiver receiver, Object incoming) {
+    UUID u = receiver.getUuid();
+
+    // Not a player
+    if (u == null)
+      return incoming;
+
     // Identify the sending player
-    Player p = Bukkit.getPlayer(sender);
+    Player p = Bukkit.getPlayer(u);
 
     // Not a player
     if (p == null)
@@ -226,9 +255,9 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
 
     // Player is in creative mode and tried to override a slot
     // This could possibly turn the fake item into a real item, cancel and exit
-    if (refl.getReflClass(ReflClass.PACKET_I_SET_CREATIVE_SLOT).isInstance(incoming)) {
+    if (C_PI_SCS.isInstance(incoming)) {
       // This player has no active request, let the packet through
-      if (!bookeditRequests.containsKey(p))
+      if (!requests.containsKey(p))
         return incoming;
 
       // Cancel this packet and exit
@@ -237,7 +266,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     }
 
     // Is not a book edit packet
-    if (!(refl.getReflClass(ReflClass.PACKET_I_B_EDIT).isInstance(incoming)))
+    if (!(C_PI_BE.isInstance(incoming)))
       return incoming;
 
     try {
@@ -251,7 +280,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
   }
 
   @Override
-  public Object modifyOutgoing(UUID receiver, Object nm, Object outgoing) {
+  public Object modifyOutgoing(IPacketReceiver receiver, Object outgoing) {
     return outgoing;
   }
 
@@ -267,19 +296,17 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
   @SuppressWarnings("unchecked")
   private List<String> extractPages(Object packet) throws Exception {
     // Try to get the list of strings directly (newer versions)
-    try {
-      return refl.getGenericFieldByType(packet, List.class, String.class, 0);
-    }
+    if (F_PI_BE_LINES != null)
+      return (List<String>) F_PI_BE_LINES.get(packet);
 
-    // Get the itemstack otherwise and extract the page contents from that
-    catch (Exception e) {
-      Class<?> isC = refl.getReflClass(ReflClass.ITEM_STACK);
-      Object stack = refl.getFieldByType(packet, isC, 0);
-      Class<?> cisC = refl.getClassBKT("inventory.CraftItemStack");
-      ItemStack item = (ItemStack) refl.findMethodByName(cisC, "asBukkitCopy", isC).invoke(null, stack);
-      BookMeta meta = (BookMeta) item.getItemMeta();
-      return meta == null ? new ArrayList<>() : meta.getPages();
-    }
+    // Cannot be null since LINES is, due to check in constructor
+    assert F_PI_BE_ITEM != null;
+
+    // Get the ItemStack otherwise and extract the page contents from that
+    Object craftItem = F_PI_BE_ITEM.get(packet);
+    ItemStack item = (ItemStack) M_CIS__AS_BUKKIT_COPY.invoke(null, craftItem);
+    BookMeta meta = (BookMeta) item.getItemMeta();
+    return meta == null ? new ArrayList<>() : meta.getPages();
   }
 
   /**
@@ -288,7 +315,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
    * @param pages Typed out pages
    */
   private void bookEditReceived(Player p, @Nullable List<String> pages) {
-    BookEditRequest request = bookeditRequests.remove(p);
+    BookEditRequest request = requests.remove(p);
 
     // No request!
     if (request == null)
@@ -298,7 +325,7 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     // disturbing local control flow
     try {
       // Synchronize this callback
-      plugin.runTask(() -> request.getCallback().accept(pages));
+      plugin.runTask(() -> request.parameter.getSubmit().accept(pages));
     } catch (Exception e) {
       logger.logError(e);
     }
@@ -315,5 +342,16 @@ public class BookEditorCommunicator implements IBookEditorCommunicator, IPacketM
     // Just has been cancelled
     if (isCancel)
       bookEditReceived(p, null);
+  }
+
+  /**
+   * Internal state class, wraps further parameters of a book edit request
+   */
+  @AllArgsConstructor
+  private static class BookEditRequest {
+    IPacketReceiver receiver;
+    BookEditParameter parameter;
+    ItemStack fakeItem;
+    int slot;
   }
 }

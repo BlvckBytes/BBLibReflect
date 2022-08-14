@@ -27,7 +27,7 @@ import org.jetbrains.annotations.Nullable;
 */
 @Getter
 @AllArgsConstructor
-public enum ReflClass {
+public enum RClass {
   MINECRAFT_SERVER(
     "net.minecraft.server.MinecraftServer",
     "net.minecraft.server.{v}.MinecraftServer"
@@ -51,6 +51,10 @@ public enum ReflClass {
   NETWORK_MANAGER(
     "net.minecraft.network.NetworkManager",
     "net.minecraft.server.{v}.NetworkManager"
+  ),
+  QUEUED_PACKET(
+    "net.minecraft.network.NetworkManager$QueuedPacket",
+    "net.minecraft.server.{v}.NetworkManager$QueuedPacket"
   ),
   SERVER_CONNECTION(
     "net.minecraft.server.network.ServerConnection",
@@ -168,19 +172,35 @@ public enum ReflClass {
     "net.minecraft.world.entity.player.EntityHuman",
     "net.minecraft.server.{v}.EntityHuman"
   ),
+  ENTITY_PLAYER(
+    "net.minecraft.server.level.EntityPlayer",
+    "net.minecraft.server.{v}.EntityPlayer"
+  ),
   CONTAINER(
     "net.minecraft.world.inventory.Container",
     "net.minecraft.server.{v}.Container"
+  ),
+  CRAFT_ITEM_STACK(
+    "org.bukkit.craftbukkit.{v}.inventory.CraftItemStack",
+    "org.bukkit.craftbukkit.{v}.inventory.CraftItemStack"
+  ),
+  CRAFT_SERVER(
+    "org.bukkit.craftbukkit.{v}.CraftServer",
+    "org.bukkit.craftbukkit.{v}.CraftServer"
+  ),
+  CRAFT_META_ITEM(
+    "org.bukkit.craftbukkit.{v}.inventory.CraftMetaItem",
+    "org.bukkit.craftbukkit.{v}.inventory.CraftMetaItem"
+  ),
+  CRAFT_PLAYER(
+    "org.bukkit.craftbukkit.{v}.entity.CraftPlayer",
+    "org.bukkit.craftbukkit.{v}.entity.CraftPlayer"
   )
   ;
 
   private final String afterRefactor, beforeRefactor;
 
-  public @Nullable Class<?> resolve(boolean afterRefactor, String version) throws ClassNotFoundException {
-    try {
-      return Class.forName((afterRefactor ? this.afterRefactor : this.beforeRefactor).replace("{v}", version));
-    } catch (Exception e) {
-      return null;
-    }
+  public Class<?> resolve(boolean afterRefactor, String version) throws ClassNotFoundException {
+    return Class.forName((afterRefactor ? this.afterRefactor : this.beforeRefactor).replace("{v}", version));
   }
 }

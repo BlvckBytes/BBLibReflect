@@ -1,11 +1,16 @@
-package me.blvckbytes.bblibreflect;
+package me.blvckbytes.bblibreflect.communicator.parameter;
+
+import com.google.gson.JsonElement;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/13/2022
+  Created On: 08/14/2022
 
-  Represents a viewer of a customizable resource which will influence
-  it's representation based on their abilities.
+  A parameter used to define which JSON message to send in either the chat
+  or the action-bar when using the ChatCommunicator.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -20,16 +25,15 @@ package me.blvckbytes.bblibreflect;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface ICustomizableViewer extends IPacketReceiver {
+@Getter
+@Setter
+@AllArgsConstructor
+public class ChatMessageParameter {
 
-  /**
-   * Get the currently open window ID of the player
-   */
-  int getCurrentWindowId();
+  // Json message to be serialized
+  JsonElement json;
 
-  /**
-   * Whether this viewer cannot render hex colors
-   */
-  boolean cannotRenderHexColors();
+  // If true, the message will be sent to chat, if false, to the action-bar
+  boolean chat;
 
 }

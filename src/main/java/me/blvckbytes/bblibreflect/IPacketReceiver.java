@@ -1,5 +1,11 @@
 package me.blvckbytes.bblibreflect;
 
+import com.google.gson.JsonElement;
+import io.netty.channel.Channel;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.UUID;
+
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
   Created On: 08/12/2022
@@ -26,5 +32,15 @@ public interface IPacketReceiver {
    * @param packets Packets to send
    */
   void sendPackets(Object... packets);
+
+  /**
+   * If available, this retrieves the receiver's UUID
+   */
+  @Nullable UUID getUuid();
+
+  /**
+   * Get the receiver's netty channel
+   */
+  Channel getChannel();
 
 }

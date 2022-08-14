@@ -1,6 +1,9 @@
 package me.blvckbytes.bblibreflect;
 
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+
+import java.util.Optional;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -25,10 +28,25 @@ import org.bukkit.entity.Player;
 public interface IReflectionHelper {
 
   /**
-   * Get a player's corresponding viewer instance
-   * @param p Target player
-   * @return Viewer instance
+   * Create a new empty packet instance of a specific class
+   * @param c Class to create
+   * @return Empty packet instance
    */
-  ICustomizableViewer getViewer(Player p);
+  Object createEmptyPacket(Class<?> c);
+
+  /**
+   * Load a known reflection required class by it's identifier
+   * @param rc Class identifier
+   * @return Loaded class, if available
+   */
+  Class<?> getClass(RClass rc) throws ClassNotFoundException;
+
+  /**
+   * Get the version specific burning time of any material within
+   * a furnace when used as a fuel source
+   * @param mat Material to check
+   * @return Burning time in ticks, empty if the material is not a fuel source
+   */
+  Optional<Integer> getBurnTime(Material mat);
 
 }
