@@ -2,6 +2,7 @@ package me.blvckbytes.bblibreflect.handle;
 
 import lombok.Getter;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /*
@@ -25,7 +26,6 @@ import java.lang.reflect.Method;
 */
 public abstract class AMethodHandle {
 
-  @Getter
   private final Method method;
 
   public AMethodHandle(Class<?> target, IMethodPredicate predicate) throws NoSuchMethodException {
@@ -55,5 +55,9 @@ public abstract class AMethodHandle {
 
     this.method = res;
     this.method.setAccessible(true);
+  }
+
+  public Object invoke(Object o, Object... args) throws InvocationTargetException, IllegalAccessException {
+    return this.method.invoke(o, args);
   }
 }

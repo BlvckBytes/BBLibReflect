@@ -7,6 +7,8 @@ import me.blvckbytes.bblibdi.IAutoConstructed;
 import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.BookEditParameter;
 import me.blvckbytes.bblibreflect.communicator.parameter.SetSlotParameter;
+import me.blvckbytes.bblibreflect.handle.AFieldHandle;
+import me.blvckbytes.bblibreflect.handle.AMethodHandle;
 import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -25,8 +27,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.*;
 
 /*
@@ -56,9 +56,9 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
   private final SetSlotCommunicator setSlot;
   private final Map<Player, BookEditRequest> requests;
 
-  private final @Nullable Field F_PI_BE_LINES, F_PI_BE_ITEM;
+  private final @Nullable AFieldHandle F_PI_BE_LINES, F_PI_BE_ITEM;
   private final Class<?> C_PI_SCS, C_PI_BE;
-  private final Method M_CIS__AS_BUKKIT_COPY;
+  private final AMethodHandle M_CIS__AS_BUKKIT_COPY;
 
   public BookEditCommunicator(
     @AutoInject ILogger logger,

@@ -4,10 +4,6 @@ import me.blvckbytes.bblibreflect.handle.*;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
   Created On: 08/14/2022
@@ -52,7 +48,7 @@ public abstract class AReflectedAccessor {
     }
   }
 
-  protected Field requireCollectionField(
+  protected AFieldHandle requireCollectionField(
     Class<?> target,
     Class<?> collectionType,
     Class<?> type,
@@ -61,10 +57,10 @@ public abstract class AReflectedAccessor {
     Boolean isStatic,
     Boolean isPublic
   ) throws NoSuchFieldException {
-    return new CollectionFieldHandle(target, collectionType, type, skip, allowSuper, isStatic, isPublic).getField();
+    return new CollectionFieldHandle(target, collectionType, type, skip, allowSuper, isStatic, isPublic);
   }
 
-  protected @Nullable Field optionalCollectionField(
+  protected @Nullable AFieldHandle optionalCollectionField(
     Class<?> target,
     Class<?> collectionType,
     Class<?> type,
@@ -74,13 +70,13 @@ public abstract class AReflectedAccessor {
     Boolean isPublic
   ) {
     try {
-      return new CollectionFieldHandle(target, collectionType, type, skip, allowSuper, isStatic, isPublic).getField();
+      return new CollectionFieldHandle(target, collectionType, type, skip, allowSuper, isStatic, isPublic);
     } catch (Exception e) {
       return null;
     }
   }
 
-  protected Field requireMapField(
+  protected AFieldHandle requireMapField(
     Class<?> target,
     Class<?> keyType,
     Class<?> valueType,
@@ -90,10 +86,10 @@ public abstract class AReflectedAccessor {
     Boolean isStatic,
     Boolean isPublic
   ) throws NoSuchFieldException {
-    return new MapFieldHandle(target, keyType, valueType, type, skip, allowSuper, isStatic, isPublic).getField();
+    return new MapFieldHandle(target, keyType, valueType, type, skip, allowSuper, isStatic, isPublic);
   }
 
-  protected @Nullable Field optionalMapField(
+  protected @Nullable AFieldHandle optionalMapField(
     Class<?> target,
     Class<?> keyType,
     Class<?> valueType,
@@ -104,13 +100,13 @@ public abstract class AReflectedAccessor {
     Boolean isPublic
   ) {
     try {
-      return new MapFieldHandle(target, keyType, valueType, type, skip, allowSuper, isStatic, isPublic).getField();
+      return new MapFieldHandle(target, keyType, valueType, type, skip, allowSuper, isStatic, isPublic);
     } catch (Exception e) {
       return null;
     }
   }
 
-  protected Field requireScalarField(
+  protected AFieldHandle requireScalarField(
     Class<?> target,
     Class<?> type,
     int skip,
@@ -118,10 +114,10 @@ public abstract class AReflectedAccessor {
     Boolean isStatic,
     Boolean isPublic
   ) throws NoSuchFieldException {
-    return new ScalarFieldHandle(target, type, skip, allowSuper, isStatic, isPublic).getField();
+    return new ScalarFieldHandle(target, type, skip, allowSuper, isStatic, isPublic);
   }
 
-  protected @Nullable Field optionalScalarField(
+  protected @Nullable AFieldHandle optionalScalarField(
     Class<?> target,
     Class<?> type,
     int skip,
@@ -130,50 +126,50 @@ public abstract class AReflectedAccessor {
     Boolean isPublic
   ) {
     try {
-      return new ScalarFieldHandle(target, type, skip, allowSuper, isStatic, isPublic).getField();
+      return new ScalarFieldHandle(target, type, skip, allowSuper, isStatic, isPublic);
     } catch (NoSuchFieldException e) {
       return null;
     }
   }
 
-  protected Method requireNamedMethod(
+  protected AMethodHandle requireNamedMethod(
     Class<?> target,
     String name,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    return new NamedMethodHandle(target, name, allowSuper).getMethod();
+    return new NamedMethodHandle(target, name, allowSuper);
   }
 
-  protected Method requireNamedMethod(
+  protected AMethodHandle requireNamedMethod(
     Class<?> target,
     String name,
     Class<?> returnType,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    return new NamedMethodHandle(target, name, returnType, allowSuper).getMethod();
+    return new NamedMethodHandle(target, name, returnType, allowSuper);
   }
 
-  protected Method requireArgsMethod(
+  protected AMethodHandle requireArgsMethod(
     Class<?> target,
     Class<?>[] argTypes,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    return new ArgsMethodHandle(target, argTypes, allowSuper).getMethod();
+    return new ArgsMethodHandle(target, argTypes, allowSuper);
   }
 
-  protected Method requireArgsMethod(
+  protected AMethodHandle requireArgsMethod(
     Class<?> target,
     Class<?>[] argTypes,
     Class<?> returnType,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    return new ArgsMethodHandle(target, argTypes, returnType, allowSuper).getMethod();
+    return new ArgsMethodHandle(target, argTypes, returnType, allowSuper);
   }
 
-  protected Constructor<?> requireArgsConstructor(
+  protected AConstructorHandle requireArgsConstructor(
     Class<?> target,
     Class<?>[] argTypes
   ) throws NoSuchMethodException {
-    return new ArgsConstructorHandle(target, argTypes).getConstructor();
+    return new ArgsConstructorHandle(target, argTypes);
   }
 }

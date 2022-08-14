@@ -3,6 +3,7 @@ package me.blvckbytes.bblibreflect.handle;
 import lombok.Getter;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -25,7 +26,6 @@ import java.lang.reflect.Constructor;
 */
 public abstract class AConstructorHandle {
 
-  @Getter
   private final Constructor<?> constructor;
 
   public AConstructorHandle(Class<?> target, IConstructorPredicate predicate) throws NoSuchMethodException {
@@ -46,5 +46,9 @@ public abstract class AConstructorHandle {
 
     this.constructor = res;
     this.constructor.setAccessible(true);
+  }
+
+  public Object newInstance(Object... args) throws IllegalAccessException, InvocationTargetException, InstantiationException {
+    return this.constructor.newInstance(args);
   }
 }

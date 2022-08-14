@@ -26,7 +26,6 @@ import java.util.*;
 */
 public abstract class AFieldHandle {
 
-  @Getter
   private final Field field;
 
   public AFieldHandle(Class<?> target, IFieldPredicate predicate) throws NoSuchFieldException {
@@ -63,5 +62,13 @@ public abstract class AFieldHandle {
 
     this.field = res;
     this.field.setAccessible(true);
+  }
+
+  public void set(Object o, Object v) throws IllegalAccessException {
+    this.field.set(o, v);
+  }
+
+  public Object get(Object o) throws IllegalAccessException {
+    return this.field.get(o);
   }
 }

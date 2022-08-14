@@ -6,6 +6,7 @@ import me.blvckbytes.bblibdi.IAutoConstructed;
 import me.blvckbytes.bblibreflect.AReflectedAccessor;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
+import me.blvckbytes.bblibreflect.handle.AFieldHandle;
 import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -19,7 +20,6 @@ import org.bukkit.permissions.PermissibleBase;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -67,7 +67,7 @@ public class PermissionListener extends AReflectedAccessor implements Listener, 
   // The previous permission list (last permission change call) for every player
   private final Map<Player, List<String>> previousPermissions;
 
-  private final Field F_CRAFT_PLAYER__PERMISSIBLE_BASE, F_PERMISSIBLE_BASE__PERMISSIONS;
+  private final AFieldHandle F_CRAFT_PLAYER__PERMISSIBLE_BASE, F_PERMISSIBLE_BASE__PERMISSIONS;
 
   public PermissionListener(
     @AutoInject APlugin plugin,

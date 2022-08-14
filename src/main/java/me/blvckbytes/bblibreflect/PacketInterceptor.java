@@ -6,6 +6,8 @@ import io.netty.channel.ChannelPipeline;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
+import me.blvckbytes.bblibreflect.handle.AFieldHandle;
+import me.blvckbytes.bblibreflect.handle.AMethodHandle;
 import me.blvckbytes.bblibutil.Tuple;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -18,8 +20,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
@@ -72,14 +72,14 @@ public class PacketInterceptor extends AReflectedAccessor implements IPacketInte
   private final ReentrantLock channelLock;
   private final Function<Player, Integer> windowId;
 
-  private final Field F_ENTITY_PLAYER__PLAYER_CONNECTION, F_PLAYER_CONNECTION__NETWORK_MANAGER,
+  private final AFieldHandle F_ENTITY_PLAYER__PLAYER_CONNECTION, F_PLAYER_CONNECTION__NETWORK_MANAGER,
     F_NETWORK_MANAGER__CHANNEL, F_CRAFT_SERVER__MINECRAFT_SERVER, F_MINECRAFT_SERVER__SERVER_CONNECTION,
     F_SERVER_CONNECTION__NETWORK_LIST, F_NETWORK_MANAGER__QUEUE, F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE,
     F_CONTAINER__WINDOW_ID;
 
-  private final @Nullable Field F_ENTITY_HUMAN__CONTAINER_ACTIVE;
+  private final @Nullable AFieldHandle F_ENTITY_HUMAN__CONTAINER_ACTIVE;
 
-  private final Method M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET;
+  private final AMethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET;
 
   public PacketInterceptor(
     @AutoInject ILogger logger,
@@ -538,7 +538,7 @@ public class PacketInterceptor extends AReflectedAccessor implements IPacketInte
   private Function<Player, Integer> getWindowIdAccess() {
     try {
       // Newer versions just have one field (active) where as older have two (default, active)
-      Field containerField = (
+      AFieldHandle containerField = (
         F_ENTITY_HUMAN__CONTAINER_ACTIVE == null ?
           F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE :
           F_ENTITY_HUMAN__CONTAINER_ACTIVE

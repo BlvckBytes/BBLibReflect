@@ -7,10 +7,9 @@ import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.ChatMessageParameter;
+import me.blvckbytes.bblibreflect.handle.AFieldHandle;
+import me.blvckbytes.bblibreflect.handle.AMethodHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -35,8 +34,8 @@ import java.lang.reflect.Method;
 public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> {
 
   private final Class<?> C_PO_CHAT, C_CHAT_MESSAGE_TYPE;
-  private final Field F_PO_CHAT__CHAT_MESSAGE_TYPE, F_PO_CHAT__BASE_COMPONENT;
-  private final Method M_CHAT_SERIALIZER__FROM_JSON;
+  private final AFieldHandle F_PO_CHAT__CHAT_MESSAGE_TYPE, F_PO_CHAT__BASE_COMPONENT;
+  private final AMethodHandle M_CHAT_SERIALIZER__FROM_JSON;
 
   public ChatCommunicator(
     @AutoInject ILogger logger,

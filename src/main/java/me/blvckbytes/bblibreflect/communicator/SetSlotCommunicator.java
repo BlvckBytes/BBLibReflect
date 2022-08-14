@@ -7,13 +7,12 @@ import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.SetSlotParameter;
+import me.blvckbytes.bblibreflect.handle.AFieldHandle;
+import me.blvckbytes.bblibreflect.handle.AMethodHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -38,9 +37,9 @@ import java.lang.reflect.Method;
 @AutoConstruct
 public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
 
-  private final Field F_PO_SS__WINDOW_ID, F_PO_SS__STATE_ID_OR_SLOT, F_PO_SS__ITEM;
-  private final Method M_CIS__AS_NMS_COPY;
-  private final @Nullable Field F_POSS__SLOT;
+  private final AFieldHandle F_PO_SS__WINDOW_ID, F_PO_SS__STATE_ID_OR_SLOT, F_PO_SS__ITEM;
+  private final AMethodHandle M_CIS__AS_NMS_COPY;
+  private final @Nullable AFieldHandle F_POSS__SLOT;
   private final Class<?> C_PO_SS;
 
   public SetSlotCommunicator(
