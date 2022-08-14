@@ -26,8 +26,8 @@ public class NamedMethodHandle extends AMethodHandle {
     String name,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    super(target, (m, sc) -> {
-      if (sc && !allowSuper)
+    super(target, m -> {
+      if (!allowSuper && !m.getDeclaringClass().equals(target))
         return false;
       return m.getName().equalsIgnoreCase(name);
     });
@@ -39,8 +39,8 @@ public class NamedMethodHandle extends AMethodHandle {
     Class<?> returnType,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    super(target, (m, sc) -> {
-      if (sc && !allowSuper)
+    super(target, m -> {
+      if (!allowSuper && !m.getDeclaringClass().equals(target))
         return false;
 
       if (!m.getName().equalsIgnoreCase(name))

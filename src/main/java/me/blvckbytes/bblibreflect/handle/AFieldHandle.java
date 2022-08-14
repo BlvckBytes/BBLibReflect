@@ -43,7 +43,7 @@ public abstract class AFieldHandle {
 
       for (Field f : curr.getDeclaredFields()) {
         int typeCounter = typeCounters.getOrDefault(f.getType(), 0);
-        Boolean result = predicate.matches(f, curr != target, typeCounter);
+        Boolean result = predicate.matches(f, typeCounter);
 
         if (result != null && result) {
           res = f;

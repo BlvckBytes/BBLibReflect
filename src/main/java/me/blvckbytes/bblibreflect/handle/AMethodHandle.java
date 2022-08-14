@@ -40,7 +40,7 @@ public abstract class AMethodHandle {
 
       for (Method m : curr.getDeclaredMethods()) {
 
-        if (predicate.matches(m, curr != target)) {
+        if (predicate.matches(m)) {
           res = m;
           break;
         }

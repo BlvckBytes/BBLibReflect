@@ -34,14 +34,14 @@ public class MapFieldHandle extends AFieldHandle {
     Boolean isStatic,
     Boolean isPublic
   ) throws NoSuchFieldException {
-    super(target, (f, sc, tc) -> {
+    super(target, (f, tc) -> {
       if (isStatic != null && isStatic != Modifier.isStatic(f.getModifiers()))
         return null;
 
       if (isPublic != null && isPublic != Modifier.isPublic(f.getModifiers()))
         return false;
 
-      if (sc && !allowSuper)
+      if (!allowSuper && !f.getDeclaringClass().equals(target))
         return false;
 
       if (skip > tc)
@@ -64,7 +64,7 @@ public class MapFieldHandle extends AFieldHandle {
     String name,
     Class<?> type
   ) throws NoSuchFieldException {
-    super(target, (f, sc, tc) -> {
+    super(target, (f, tc) -> {
       if (!f.getType().equals(type))
         return false;
 

@@ -24,6 +24,6 @@ import java.lang.reflect.Method;
 @FunctionalInterface
 public interface IMethodPredicate {
 
-  boolean matches(Method m, boolean isInsideSuperclass);
+  boolean matches(Method m);
 
 }

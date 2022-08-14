@@ -26,8 +26,8 @@ public class ArgsMethodHandle extends AMethodHandle {
     Class<?>[] argTypes,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    super(target, (m, sc) -> {
-      if (sc && !allowSuper)
+    super(target, m -> {
+      if (!allowSuper && !m.getDeclaringClass().equals(target))
         return false;
 
       Class<?>[] params = m.getParameterTypes();
@@ -49,8 +49,8 @@ public class ArgsMethodHandle extends AMethodHandle {
     Class<?> returnType,
     boolean allowSuper
   ) throws NoSuchMethodException {
-    super(target, (m, sc) -> {
-      if (sc && !allowSuper)
+    super(target, m -> {
+      if (!allowSuper && !m.getDeclaringClass().equals(target))
         return false;
 
       Class<?>[] params = m.getParameterTypes();

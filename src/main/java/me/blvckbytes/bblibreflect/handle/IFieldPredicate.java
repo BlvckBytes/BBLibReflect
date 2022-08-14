@@ -25,12 +25,11 @@ import java.lang.reflect.Field;
 public interface IFieldPredicate {
 
   /**
-   * Field matching predecate, used to decide what field to take
+   * Field matching predicate, used to decide what field to take
    * @param f Field reference
-   * @param isInsideSuperclass If it occurs inside of a superclass
    * @param totalTypeCount How many times that field has been counted
    * @return null means completely doesn't match, false will increase the type count and true will take that field
    */
-  Boolean matches(Field f, boolean isInsideSuperclass, int totalTypeCount);
+  Boolean matches(Field f, int totalTypeCount);
 
 }

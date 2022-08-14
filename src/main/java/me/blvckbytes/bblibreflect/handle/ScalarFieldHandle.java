@@ -12,14 +12,14 @@ public class ScalarFieldHandle extends AFieldHandle {
     Boolean isStatic,
     Boolean isPublic
   ) throws NoSuchFieldException {
-    super(target, (f, sc, tc) -> {
+    super(target, (f, tc) -> {
       if (isStatic != null && isStatic != Modifier.isStatic(f.getModifiers()))
         return null;
 
       if (isPublic != null && isPublic != Modifier.isPublic(f.getModifiers()))
         return false;
 
-      if (sc && !allowSuper)
+      if (!allowSuper && !f.getDeclaringClass().equals(target))
         return false;
 
       if (skip > tc)
@@ -33,6 +33,6 @@ public class ScalarFieldHandle extends AFieldHandle {
     Class<?> target,
     String name
   ) throws NoSuchFieldException {
-    super(target, (f, sc, tc) -> f.getName().equalsIgnoreCase(name));
+    super(target, (f, tc) -> f.getName().equalsIgnoreCase(name));
   }
 }
