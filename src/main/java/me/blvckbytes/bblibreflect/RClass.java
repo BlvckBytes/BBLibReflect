@@ -2,7 +2,6 @@ package me.blvckbytes.bblibreflect;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.jetbrains.annotations.Nullable;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -91,6 +90,18 @@ public enum RClass {
   PACKET_O_SET_SLOT(
     "net.minecraft.network.protocol.game.PacketPlayOutSetSlot",
     "net.minecraft.server.{v}.PacketPlayOutSetSlot"
+  ),
+  PACKET_O_PLAYER_INFO(
+    "net.minecraft.network.protocol.game.PacketPlayOutPlayerInfo",
+    "net.minecraft.server.{v}.PacketPlayOutPlayerInfo"
+  ),
+  ENUM_PLAYER_INFO_ACTION(
+    "net.minecraft.network.protocol.game.PacketPlayOutPlayerInfo$EnumPlayerInfoAction",
+    "net.minecraft.server.{v}.PacketPlayOutPlayerInfo$EnumPlayerInfoAction"
+  ),
+  PLAYER_INFO_DATA(
+    "net.minecraft.network.protocol.game.PacketPlayOutPlayerInfo$PlayerInfoData",
+    "net.minecraft.server.{v}.PacketPlayOutPlayerInfo$PlayerInfoData"
   ),
   PACKET_O_CHAT(
     "net.minecraft.network.protocol.game.PacketPlayOutChat",
@@ -195,7 +206,11 @@ public enum RClass {
   CRAFT_PLAYER(
     "org.bukkit.craftbukkit.{v}.entity.CraftPlayer",
     "org.bukkit.craftbukkit.{v}.entity.CraftPlayer"
-  )
+  ),
+  ENUM_GAME_MODE(
+    "net.minecraft.world.level.EnumGamemode",
+    "net.minecraft.server.{v}.EnumGamemode"
+  ),
   ;
 
   private final String afterRefactor, beforeRefactor;

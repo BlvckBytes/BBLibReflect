@@ -75,4 +75,10 @@ public interface IPacketInterceptor {
    */
   ICustomizableViewer getPlayerAsViewer(Player p);
 
+  /**
+   * Broadcast packets to all players currently on the server
+   * @param packet Packet to send
+   */
+  void broadcastPackets(Object... packet);
+
 }

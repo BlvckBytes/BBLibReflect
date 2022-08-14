@@ -8,7 +8,6 @@ import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
 import me.blvckbytes.bblibutil.Tuple;
 import me.blvckbytes.bblibutil.logger.ILogger;
-import net.minecraft.server.v1_13_R2.EntityPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -259,6 +258,11 @@ public class PacketInterceptor extends AReflectedAccessor implements IPacketInte
       logger.logError(e);
       return null;
     }
+  }
+
+  @Override
+  public void broadcastPackets(Object... packets) {
+    viewers.values().forEach(v -> v.sendPackets(packets));
   }
 
   @Override
