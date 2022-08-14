@@ -4,6 +4,7 @@ import me.blvckbytes.bblibreflect.handle.*;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -167,5 +168,12 @@ public abstract class AReflectedAccessor {
     boolean allowSuper
   ) throws NoSuchMethodException {
     return new ArgsMethodHandle(target, argTypes, returnType, allowSuper).getMethod();
+  }
+
+  protected Constructor<?> requireArgsConstructor(
+    Class<?> target,
+    Class<?>[] argTypes
+  ) throws NoSuchMethodException {
+    return new ArgsConstructorHandle(target, argTypes).getConstructor();
   }
 }
