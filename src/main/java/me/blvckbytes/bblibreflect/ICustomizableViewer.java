@@ -32,4 +32,9 @@ public interface ICustomizableViewer extends IPacketReceiver {
    */
   boolean cannotRenderHexColors();
 
+  /**
+   * Get the version number of the client
+   */
+  int getClientVersion();
+
 }

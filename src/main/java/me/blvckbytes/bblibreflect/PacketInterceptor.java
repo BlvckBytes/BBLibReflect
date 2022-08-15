@@ -1,15 +1,15 @@
 package me.blvckbytes.bblibreflect;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelDuplexHandler;
-import io.netty.channel.ChannelPipeline;
+import com.mojang.authlib.GameProfile;
+import io.netty.channel.*;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
 import me.blvckbytes.bblibreflect.handle.Assignability;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibreflect.handle.MethodHandle;
-import me.blvckbytes.bblibreflect.handle.ClassHandle;
+import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.Tuple;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -19,13 +19,10 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Proxy;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -52,7 +49,7 @@ import java.util.function.Function;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoConstructed {
+public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, Listener, IAutoConstructed {
 
   // Name of ChannelHandler within the player's pipeline
   private final String HANDLER_NAME;
@@ -65,28 +62,25 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
   private final Map<UUID, ArrayList<Tuple<IPacketModifier, ModificationPriority>>> specificModifiers;
 
   // List of wrapped players
-  private final Map<Player, ICustomizableViewer> viewers;
+  private final Map<UUID, ICustomizableViewer> viewers;
 
-  // Vanilla network manager list before proxying, used for restoring
-  @Nullable private Object vanillaNML;
+  // Vanilla channel future list before proxying, used for restoring
+  @Nullable private Object vanillaChannelFutureList;
 
   private final ILogger logger;
-  private final ReentrantLock channelLock;
-  private final Function<Player, Integer> windowId;
 
   private final FieldHandle F_ENTITY_PLAYER__PLAYER_CONNECTION, F_PLAYER_CONNECTION__NETWORK_MANAGER,
     F_NETWORK_MANAGER__CHANNEL, F_CRAFT_SERVER__MINECRAFT_SERVER, F_MINECRAFT_SERVER__SERVER_CONNECTION,
-    F_SERVER_CONNECTION__NETWORK_LIST, F_NETWORK_MANAGER__QUEUE, F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE,
-    F_CONTAINER__WINDOW_ID;
+    F_SERVER_CONNECTION__FUTURE_LIST, F_PI_HANDSHAKE__VERSION,  F_PO_LOGIN__GAME_PROFILE, F_PO_OPEN_WINDOW__WINDOW_ID;
 
-  private final @Nullable FieldHandle F_ENTITY_HUMAN__CONTAINER_ACTIVE;
+  private final MethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET, M_CHANNEL_INITIALIZER__INIT_CHANNEL;
 
-  private final MethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET;
+  private final ClassHandle C_PI_HANDSHAKE,  C_PO_OPEN_WINDOW, C_PO_LOGIN;
 
   public PacketInterceptor(
     @AutoInject ILogger logger,
     @AutoInject IReflectionHelper reflection,
-    @AutoInject JavaPlugin plugin
+    @AutoInject APlugin plugin
   ) throws Exception {
 
     ClassHandle C_CRAFT_SERVER      = reflection.getClass(RClass.CRAFT_SERVER);
@@ -97,10 +91,10 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
     ClassHandle C_PLAYER_CONNECTION = reflection.getClass(RClass.PLAYER_CONNECTION);
     ClassHandle C_ENTITY_PLAYER     = reflection.getClass(RClass.ENTITY_PLAYER);
     ClassHandle C_SERVER_CONNECTION = reflection.getClass(RClass.SERVER_CONNECTION);
-    ClassHandle C_QUEUED_PACKET     = reflection.getClass(RClass.QUEUED_PACKET);
 
-    ClassHandle C_ENTITY_HUMAN = reflection.getClass(RClass.ENTITY_HUMAN);
-    ClassHandle C_CONTAINER    = reflection.getClass(RClass.CONTAINER);
+    C_PI_HANDSHAKE                  = reflection.getClass(RClass.PACKET_I_HANDSHAKE);
+    C_PO_LOGIN                      = reflection.getClass(RClass.PACKET_O_LOGIN);
+    C_PO_OPEN_WINDOW                = reflection.getClass(RClass.PACKET_O_OPEN_WINDOW);
 
     M_CRAFT_PLAYER__GET_HANDLE = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
     M_NETWORK_MANAGER__SEND_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).required();
@@ -110,17 +104,18 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
     F_NETWORK_MANAGER__CHANNEL            = C_NETWORK_MANAGER.locateField().withType(Channel.class).required();
     F_CRAFT_SERVER__MINECRAFT_SERVER      = C_CRAFT_SERVER.locateField().withType(C_MINECRAFT_SERVER, false, Assignability.TYPE_TO_TARGET).required();
     F_MINECRAFT_SERVER__SERVER_CONNECTION = C_MINECRAFT_SERVER.locateField().withType(C_SERVER_CONNECTION).required();
-    F_SERVER_CONNECTION__NETWORK_LIST     = C_SERVER_CONNECTION.locateField().withType(List.class).withGeneric(C_NETWORK_MANAGER).required();
-    F_NETWORK_MANAGER__QUEUE              = C_NETWORK_MANAGER.locateField().withType(Queue.class).withGeneric(C_QUEUED_PACKET).required();
-    F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE = C_ENTITY_HUMAN.locateField().withType(C_CONTAINER).required();
-    F_ENTITY_HUMAN__CONTAINER_ACTIVE            = C_ENTITY_HUMAN.locateField().withType(C_CONTAINER).withSkip(1).optional();
-    F_CONTAINER__WINDOW_ID = C_CONTAINER.locateField().withType(int.class).withPublic(true).required();
+    F_SERVER_CONNECTION__FUTURE_LIST      = C_SERVER_CONNECTION.locateField().withType(List.class).withGeneric(ChannelFuture.class).required();
+    F_PI_HANDSHAKE__VERSION      = C_PI_HANDSHAKE.locateField().withType(int.class).required();
+    F_PO_LOGIN__GAME_PROFILE     = C_PO_LOGIN.locateField().withType(GameProfile.class).required();
+    F_PO_OPEN_WINDOW__WINDOW_ID  = C_PO_OPEN_WINDOW.locateField().withType(int.class).required();
 
+    M_CHANNEL_INITIALIZER__INIT_CHANNEL = ClassHandle.of(ChannelInitializer.class).locateMethod().withName("initChannel").withParameters(Channel.class).required();
+
+    // Packet modifier registry
     this.globalModifiers = Collections.synchronizedList(new ArrayList<>());
     this.specificModifiers = Collections.synchronizedMap(new HashMap<>());
-    this.viewers = new HashMap<>();
-    this.channelLock = new ReentrantLock();
-    this.windowId = getWindowIdAccess();
+
+    this.viewers = Collections.synchronizedMap(new HashMap<>());
     this.logger = logger;
 
     // Generate a globally unique handler name
@@ -130,57 +125,9 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
         .replace(" ", "_")
         .toLowerCase()
     );
-  }
 
-  private ICustomizableViewer playerToReceiver(Player p) throws Exception {
-    // Get the handle of the underlying CraftPlayer
-    Object entityPlayer = M_CRAFT_PLAYER__GET_HANDLE.invoke(p);
-
-    // Get the NMS EntityPlayer's PlayerConnection
-    Object playerConnection = F_ENTITY_PLAYER__PLAYER_CONNECTION.get(entityPlayer);
-
-    // Get the PlayerConnection's NetworkManager
-    Object networkManager = F_PLAYER_CONNECTION__NETWORK_MANAGER.get(playerConnection);
-
-    // Get the Channel of that NetworkManager
-    Channel channel = (Channel) F_NETWORK_MANAGER__CHANNEL.get(networkManager);
-
-    // Create a new anonymous instance for this player
-    return new ICustomizableViewer() {
-
-      @Override
-      public int getCurrentWindowId() {
-        return windowId.apply(p);
-      }
-
-      @Override
-      public boolean cannotRenderHexColors() {
-        // TODO: Implement properly
-        return false;
-      }
-
-      @Override
-      public void sendPackets(Object... packets) {
-        try {
-          // Send packets in a sequence
-          for (Object packet : packets)
-            M_NETWORK_MANAGER__SEND_PACKET.invoke(networkManager, packet);
-        } catch (Exception e) {
-          logger.logError(e);
-        }
-      }
-
-      @Override
-      public @Nullable UUID getUuid() {
-        return p.getUniqueId();
-      }
-
-      @Override
-      public Channel getChannel() {
-        return channel;
-      }
-
-    };
+    // Register self as a modifier
+    globalModifiers.add(new Tuple<>(this, ModificationPriority.HIGH));
   }
 
   //=========================================================================//
@@ -244,20 +191,7 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
 
   @Override
   public ICustomizableViewer getPlayerAsViewer(Player p) {
-    try {
-      ICustomizableViewer viewer = viewers.get(p);
-
-      // Create a new receiver if not present yet
-      if (viewer == null) {
-        viewer = playerToReceiver(p);
-        viewers.put(p, viewer);
-      }
-
-      return viewer;
-    } catch (Exception e) {
-      logger.logError(e);
-      return null;
-    }
+    return viewers.get(p.getUniqueId());
   }
 
   @Override
@@ -268,7 +202,7 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
   @Override
   public void cleanup() {
     // Unproxy the network manager list
-    unproxyNetworkList();
+    unproxyFutureList();
 
     // Unregister all globals
     // Loop in reverse to avoid concurrent modifications
@@ -295,7 +229,7 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
   @Override
   public void initialize() {
     // Proxy the network manager list
-    proxyNetworkList();
+    proxyFutureList();
 
     // Inject all players after a reload
     for (Player p : Bukkit.getOnlinePlayers())
@@ -306,14 +240,9 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
   //                                Listeners                                //
   //=========================================================================//
 
-  @EventHandler(priority = EventPriority.LOWEST)
-  public void onJoin(PlayerJoinEvent e) {
-    inject(e.getPlayer());
-  }
-
   @EventHandler
   public void onQuit(PlayerQuitEvent e) {
-    IPacketReceiver receiver = viewers.remove(e.getPlayer());
+    IPacketReceiver receiver = viewers.remove(e.getPlayer().getUniqueId());
     if (receiver != null)
       uninject(receiver);
   }
@@ -323,13 +252,39 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
   //=========================================================================//
 
   /**
+   * Inject a player manually, used after reloads
+   * @param p Target player
+   */
+  private void inject(Player p) {
+    try {
+      // Get the handle of the underlying CraftPlayer
+      Object entityPlayer = M_CRAFT_PLAYER__GET_HANDLE.invoke(p);
+
+      // Get the NMS EntityPlayer's PlayerConnection
+      Object playerConnection = F_ENTITY_PLAYER__PLAYER_CONNECTION.get(entityPlayer);
+
+      // Get the PlayerConnection's NetworkManager
+      Object networkManager = F_PLAYER_CONNECTION__NETWORK_MANAGER.get(playerConnection);
+
+      // Get the Channel of that NetworkManager
+      Channel channel = (Channel) F_NETWORK_MANAGER__CHANNEL.get(networkManager);
+
+      // TODO: Implement
+    } catch (Exception e) {
+      logger.logError(e);
+    }
+  }
+
+  /**
    * Remove a previously created injection from a receiver
    * @param receiver Receiver to uninject
    */
   private void uninject(IPacketReceiver receiver) {
     try {
+      Channel channel = receiver.getChannel();
+
       // Remove pipeline entry
-      ChannelPipeline pipe = receiver.getChannel().pipeline();
+      ChannelPipeline pipe = channel.pipeline();
 
       // Not registered in the pipeline
       if (!pipe.names().contains(HANDLER_NAME))
@@ -354,9 +309,6 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
     ChannelPipeline pipe = receiver.getChannel().pipeline();
 
     // Already registered in the pipeline, remove the old listener
-    // This may happen when a player has already been injected by the NetworkManager-list proxy,
-    // and now joined. Just remove the early handler and register a new one, which now knows
-    // the player ref which the previous handler couldn't know.
     if (pipe.names().contains(HANDLER_NAME))
       pipe.remove(HANDLER_NAME);
 
@@ -379,27 +331,12 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
   }
 
   /**
-   * Create a new injection for the player
-   * @param p Target player, mandatory
+   * Undo a previously injected NetworkManager's future list field proxy
+   * by restoring back to the vanilla field ref
    */
-  private void inject(Player p) {
-    try {
-      channelLock.lock();
-      injectChannel(getPlayerAsViewer(p));
-    } catch (Exception e) {
-      logger.logError(e);
-    } finally {
-      channelLock.unlock();
-    }
-  }
-
-  /**
-   * Undo a previously injected NML field proxy by restoring
-   * back to the vanilla field ref
-   */
-  private void unproxyNetworkList() {
+  private void unproxyFutureList() {
     // Not yet proxied
-    if (vanillaNML == null)
+    if (vanillaChannelFutureList == null)
       return;
 
     try {
@@ -410,52 +347,23 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
       Object serverConnection = F_MINECRAFT_SERVER__SERVER_CONNECTION.get(minecraftServer);
 
       // Restore the vanilla list ref
-      F_SERVER_CONNECTION__NETWORK_LIST.set(serverConnection, vanillaNML);
+      F_SERVER_CONNECTION__FUTURE_LIST.set(serverConnection, vanillaChannelFutureList);
+
+      // Clear the ref again
+      vanillaChannelFutureList = null;
     } catch (Exception e) {
       logger.logError(e);
     }
   }
 
   /**
-   * Proxy the network-manager's internal packet queue and wait for
-   * poll() calls. When a call occurs, run the callback and unproxy immediately
-   * @param nm NetworkManger to monitor
-   * @param queuePolled Callback, invoked on poll()
+   * Inject a non-modifying read-only proxy into the NetworkManager's ChannelFuture
+   * list field and keep the vanilla ref for later restoring. Then, proxy all
+   * contained ChannelFutures and proxy added futures right before being relayed
+   * to the real list again.
    */
-  private void callOnceOnQueuePoll(Object nm, Runnable queuePolled) {
-    try {
-      // Get the vanilla packet queue within the network manager
-      Object queue = F_NETWORK_MANAGER__QUEUE.get(nm);
-
-      // Create a proxied queue
-      F_NETWORK_MANAGER__QUEUE.set(nm, Proxy.newProxyInstance(
-        nm.getClass().getClassLoader(),
-        new Class[]{Queue.class},
-        (proxy, method, args) -> {
-          // Queue has been polled
-          if (method.getName().equals("poll")) {
-            // Undo proxy by re-setting the vanilla ref
-            F_NETWORK_MANAGER__QUEUE.set(nm, queue);
-
-            // Invoke callback
-            queuePolled.run();
-          }
-
-          // Relay method call to vanilla queue
-          return method.invoke(queue, args);
-        }
-      ));
-    } catch (Exception e) {
-      logger.logError(e);
-    }
-  }
-
-  /**
-   * Inject a non-modifying read-only proxy into the NML field and
-   * keep the vanilla ref for later restoring. Monitor for new NetworkManagers
-   * and inject into their pipelines as soon as possible.
-   */
-  private void proxyNetworkList() {
+  @SuppressWarnings("unchecked")
+  private void proxyFutureList() {
     try {
       // Get the MinecraftServer from the Server's underlying CraftServer
       Object minecraftServer = F_CRAFT_SERVER__MINECRAFT_SERVER.get(Bukkit.getServer());
@@ -463,105 +371,150 @@ public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoCon
       // Get it's server connection
       Object serverConnection = F_MINECRAFT_SERVER__SERVER_CONNECTION.get(minecraftServer);
 
-      // Get the List<NetworkManager> within the ServerConnection
-      Object networkList = F_SERVER_CONNECTION__NETWORK_LIST.get(serverConnection);
+      // Get the list of channel futures
+      List<ChannelFuture> futureList = (List<ChannelFuture>) F_SERVER_CONNECTION__FUTURE_LIST.get(serverConnection);
 
-      // Create a proxied list
-      Object proxiedList = Proxy.newProxyInstance(
-        networkList.getClass().getClassLoader(),
+      // Create a proxy which internally relays to the real list and catches add calls
+      Object proxiedFutureList = Proxy.newProxyInstance(
+        futureList.getClass().getClassLoader(),
         new Class[]{List.class},
 
         (proxy, method, args) -> {
-          // A new NetworkManager has just been instantiated and added to the list
-          if (method.getName().equals("add")) {
+          // Proxy future before adding it to the list
+          if (method.getName().equals("add"))
+            proxyChannelFuture((ChannelFuture) args[0]);
 
-            // Wait until the internal packet queue polled once, to
-            // know when the connection has been initialized completely,
-            // then inject this channel
-            callOnceOnQueuePoll(args[0], () -> {
-              try {
-                // Get the Channel of the added NetworkManager
-                Object networkManager = args[0];
-                Channel channel = (Channel) F_NETWORK_MANAGER__CHANNEL.get(networkManager);
-
-                channelLock.lock();
-                injectChannel(new IPacketReceiver() {
-
-                  @Override
-                  public void sendPackets(Object... packets) {
-                    try {
-                      // Send packets in a sequence
-                      for (Object packet : packets)
-                        M_NETWORK_MANAGER__SEND_PACKET.invoke(networkManager, packet);
-                    } catch (Exception e) {
-                      logger.logError(e);
-                    }
-                  }
-
-                  @Override
-                  public @Nullable UUID getUuid() {
-                    // Has no UUID yet
-                    return null;
-                  }
-
-                  @Override
-                  public Channel getChannel() {
-                    return channel;
-                  }
-                });
-              } catch (Exception e) {
-                logger.logError(e);
-              } finally {
-                channelLock.unlock();
-              }
-            });
-          }
-          return method.invoke(networkList, args);
+          return method.invoke(futureList, args);
         }
       );
 
-      // Wrap this proxied list in a synchronizer
-      proxiedList = Collections.synchronizedList((List<?>) proxiedList);
+      // Synchronizing to the real list before overriding to avoid
+      // changing it while it itself is being modified
+      synchronized (futureList) {
+        // Loop and proxy all existing futures before proxying the list
+        for (ChannelFuture existingFuture : futureList)
+          proxyChannelFuture(existingFuture);
 
-      // Set the field's value to the proxied list
-      // and save the vanilla ref
-      F_SERVER_CONNECTION__NETWORK_LIST.set(serverConnection, proxiedList);
-      vanillaNML = networkList;
+        // Override vanilla field with proxy
+        F_SERVER_CONNECTION__FUTURE_LIST.set(serverConnection, proxiedFutureList);
+
+        // Store the vanilla ref
+        vanillaChannelFutureList = futureList;
+      }
     } catch (Exception e) {
       logger.logError(e);
     }
   }
 
   /**
-   * Find access to the active window ID of a player
+   * Injects a new handler into the future's channel as soon as available by
+   * proxying it's channel initializer and injecting right after it's ready
+   * @param future ChannelFuture to proxy
    */
-  private Function<Player, Integer> getWindowIdAccess() {
+  private void proxyChannelFuture(ChannelFuture future) {
     try {
-      // Newer versions just have one field (active) where as older have two (default, active)
-      FieldHandle containerField = (
-        F_ENTITY_HUMAN__CONTAINER_ACTIVE == null ?
-          F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE :
-          F_ENTITY_HUMAN__CONTAINER_ACTIVE
-      );
+      Channel channel = future.channel();
+      List<String> names = channel.pipeline().names();
 
-      // Get the container at runtime and then access it's ID field
-      return p -> {
-        try {
-          // Get the handle of the underlying CraftPlayer
-          Object entityPlayer = M_CRAFT_PLAYER__GET_HANDLE.invoke(p);
+      // Loop all handlers within the channel's pipeline
+      for (String name : names) {
+        ChannelHandler handler = channel.pipeline().get(name);
 
-          // Get the player's active container
-          Object container = containerField.get(entityPlayer);
+        // Yes, that happens...
+        if (handler == null)
+          continue;
 
-          // Get that container's window ID
-          return (int) F_CONTAINER__WINDOW_ID.get(container);
-        } catch (Exception e) {
-          return 0;
-        }
-      };
+        // Try to find the child handler field
+        FieldHandle childField = ClassHandle.of(handler.getClass()).locateField()
+            .withName("childHandler")
+            .optional();
+
+        // Has no child handler, not of interest
+        if (childField == null)
+          continue;
+
+        // Get the vanilla initializer
+        ChannelInitializer<?> vanillaInitializer = (ChannelInitializer<?>) childField.get(handler);
+
+        // Create a new simple relaying initializer
+        ChannelInitializer<?> proxyInitializer = new ChannelInitializer<>() {
+
+          @Override
+          protected void initChannel(Channel ch) throws Exception {
+            // Have the channel initialized by the real initializer first
+            M_CHANNEL_INITIALIZER__INIT_CHANNEL.invoke(vanillaInitializer, ch);
+
+            // Get the network manager through the channel handler added by the vanilla initializer
+            Object networkManager = ch.pipeline().get("packet_handler");
+
+            // Let's just assume it's going to be a player
+            // UUID is staying null otherwise, which signals that it's a player-less receiver
+            InterceptedViewer viewer = new InterceptedViewer(
+              ch, networkManager, logger, M_NETWORK_MANAGER__SEND_PACKET
+            );
+
+            injectChannel(viewer);
+          }
+        };
+
+        // Install the proxy initializer
+        // I don't plan on un-proxying this later, as it's irrelevant
+        childField.set(handler, proxyInitializer);
+        break;
+      }
     } catch (Exception e) {
       logger.logError(e);
-      return p -> 0;
     }
+  }
+
+  @Override
+  public Object modifyIncoming(IPacketReceiver sender, Object incoming) {
+    // Not an intercepted viewer, cannot update anything
+    if (!(sender instanceof InterceptedViewer))
+      return incoming;
+
+    InterceptedViewer viewer = (InterceptedViewer) sender;
+
+    try {
+      // Update the client version, now that it's known
+      if (C_PI_HANDSHAKE.isInstance(incoming)) {
+        int version = (int) F_PI_HANDSHAKE__VERSION.get(incoming);
+        viewer.setClientVersion(version);
+      }
+    } catch (Exception e) {
+      logger.logError(e);
+    }
+
+    return incoming;
+  }
+
+  @Override
+  public Object modifyOutgoing(IPacketReceiver receiver, Object outgoing) {
+    // Not an intercepted viewer, cannot update anything
+    if (!(receiver instanceof InterceptedViewer))
+      return receiver;
+
+    InterceptedViewer viewer = (InterceptedViewer) receiver;
+
+    try {
+      // Update the UUID, now that it's known
+      if (C_PO_LOGIN.isInstance(outgoing)) {
+        GameProfile profile = (GameProfile) F_PO_LOGIN__GAME_PROFILE.get(outgoing);
+        viewer.setUuid(profile.getId());
+
+        // Also register as a viewer now
+        viewers.put(profile.getId(), viewer);
+      }
+
+      // Update the client's window id
+      if (C_PO_OPEN_WINDOW.isInstance(outgoing)) {
+        int windowId = (int) F_PO_OPEN_WINDOW__WINDOW_ID.get(outgoing);
+        viewer.setCurrentWindowId(windowId);
+      }
+    } catch (Exception e) {
+      logger.logError(e);
+    }
+
+    return outgoing;
   }
 }

@@ -87,6 +87,10 @@ public enum RClass {
     "net.minecraft.network.chat.ChatComponentText",
     "net.minecraft.server.{v}.ChatComponentText"
   ),
+  PACKET_O_OPEN_WINDOW(
+    "net.minecraft.network.protocol.game.PacketPlayOutOpenWindow",
+    "net.minecraft.server.{v}.PacketPlayOutOpenWindow"
+  ),
   PACKET_O_SET_SLOT(
     "net.minecraft.network.protocol.game.PacketPlayOutSetSlot",
     "net.minecraft.server.{v}.PacketPlayOutSetSlot"
@@ -115,6 +119,10 @@ public enum RClass {
     "",
     "net.minecraft.server.{v}.PacketPlayOutTitle"
   ),
+  PACKET_O_LOGIN(
+    "net.minecraft.network.protocol.login.PacketLoginOutSuccess",
+    "net.minecraft.server.{v}.PacketLoginOutSuccess"
+  ),
   ENUM_TITLE_ACTION(
     "",
     "net.minecraft.server.{v}.PacketPlayOutTitle$EnumTitleAction"
@@ -141,7 +149,11 @@ public enum RClass {
   ),
   PACKET_I_ITEM_NAME(
     "net.minecraft.network.protocol.game.PacketPlayInItemName",
-      "net.minecraft.server.{v}.PacketPlayInItemName"
+    "net.minecraft.server.{v}.PacketPlayInItemName"
+  ),
+  PACKET_I_HANDSHAKE(
+    "net.minecraft.network.protocol.handshake.PacketHandshakingInSetProtocol",
+    "net.minecraft.server.{v}.PacketHandshakingInSetProtocol"
   ),
   TILE_ENTITY_FURNACE(
     "net.minecraft.world.level.block.entity.TileEntityFurnace",
