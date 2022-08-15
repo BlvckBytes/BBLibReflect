@@ -7,10 +7,7 @@ import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.ChatMessageParameter;
-import me.blvckbytes.bblibreflect.handle.Assignability;
-import me.blvckbytes.bblibreflect.handle.FieldHandle;
-import me.blvckbytes.bblibreflect.handle.MethodHandle;
-import me.blvckbytes.bblibreflect.handle.ClassHandle;
+import me.blvckbytes.bblibreflect.handle.*;
 import me.blvckbytes.bblibutil.logger.ILogger;
 
 /*
@@ -35,7 +32,8 @@ import me.blvckbytes.bblibutil.logger.ILogger;
 @AutoConstruct
 public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> {
 
-  private final ClassHandle C_PO_CHAT, C_CHAT_MESSAGE_TYPE;
+  private final ClassHandle C_PO_CHAT;
+  private final EnumHandle E_CHAT_MESSAGE_TYPE;
   private final FieldHandle F_PO_CHAT__CHAT_MESSAGE_TYPE, F_PO_CHAT__BASE_COMPONENT;
   private final MethodHandle M_CHAT_SERIALIZER__FROM_JSON;
 
@@ -49,9 +47,9 @@ public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> 
     ClassHandle C_CHAT_SERIALIZER   = helper.getClass(RClass.CHAT_SERIALIZER);
 
     C_PO_CHAT           = helper.getClass(RClass.PACKET_O_CHAT);
-    C_CHAT_MESSAGE_TYPE = helper.getClass(RClass.CHAT_MESSAGE_TYPE);
+    E_CHAT_MESSAGE_TYPE = helper.getClass(RClass.CHAT_MESSAGE_TYPE).asEnum();
 
-    F_PO_CHAT__CHAT_MESSAGE_TYPE = C_PO_CHAT.locateField().withType(C_CHAT_MESSAGE_TYPE).required();
+    F_PO_CHAT__CHAT_MESSAGE_TYPE = C_PO_CHAT.locateField().withType(E_CHAT_MESSAGE_TYPE).required();
     F_PO_CHAT__BASE_COMPONENT    = C_PO_CHAT.locateField().withType(C_BASE_COMPONENT).required();
 
     M_CHAT_SERIALIZER__FROM_JSON = C_CHAT_SERIALIZER.locateMethod()
@@ -65,23 +63,12 @@ public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> 
     try {
       Object packet = helper.createEmptyPacket(C_PO_CHAT);
 
-      F_PO_CHAT__CHAT_MESSAGE_TYPE.set(packet, getMessageType(parameter.isChat()));
+      F_PO_CHAT__CHAT_MESSAGE_TYPE.set(packet, E_CHAT_MESSAGE_TYPE.getByOrdinal(parameter.isChat() ? 0 : 2));
       F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getJson()));
 
       receiver.sendPackets(packet);
     } catch (Exception e) {
       logger.logError(e);
     }
-  }
-
-  /**
-   * Get the message type enum for either the chat or the action-bar
-   * @param chat True means chat, false action-bar
-   * @return Enum constant
-   */
-  @SuppressWarnings("unchecked")
-  private Enum<?> getMessageType(boolean chat) {
-    Enum<?>[] types = ((Class<? extends Enum<?>>) C_CHAT_MESSAGE_TYPE.get()).getEnumConstants();
-    return types[chat ? 0 : 2];
   }
 }

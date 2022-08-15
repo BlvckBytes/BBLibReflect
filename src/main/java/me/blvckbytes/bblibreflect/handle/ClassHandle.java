@@ -2,8 +2,7 @@ package me.blvckbytes.bblibreflect.handle;
 
 import lombok.AllArgsConstructor;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -31,13 +30,15 @@ public class ClassHandle {
   // Caching manual encapsulations using the of() constructor here
   private static final Map<Class<?>, ClassHandle> encapsulations;
 
+  // Caching enumeration constants
+  private static final Map<Class<?>, EnumHandle> enumerations;
+
   static {
     encapsulations = new HashMap<>();
+    enumerations = new HashMap<>();
   }
 
-  // TODO: Retrieve enum constants conveniently by name or ordinal if this class is an enum
-
-  private final Class<?> c;
+  protected final Class<?> c;
 
   /**
    * Get the encapsulated field directly
@@ -52,6 +53,25 @@ public class ClassHandle {
    */
   public boolean isInstance(Object o) {
     return this.c.isInstance(o);
+  }
+
+  /**
+   * Interpret this class as an enumeration and get a handle to it
+   * @throws IllegalStateException Thrown if this class is not an enumeration
+   */
+  public EnumHandle asEnum() throws IllegalStateException {
+    EnumHandle enumHandle = enumerations.get(c);
+
+    // Use cached value
+    if (enumHandle != null)
+      return enumHandle;
+
+    // Create a new enum handle on this class
+    enumHandle = new EnumHandle(c);
+
+    // Store in cache and return
+    enumerations.put(c, enumHandle);
+    return enumHandle;
   }
 
   /**
@@ -75,6 +95,19 @@ public class ClassHandle {
     return new ConstructorPredicateBuilder(this);
   }
 
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof Class<?>))
+      return false;
+
+    return c.equals(obj);
+  }
+
+  @Override
+  public int hashCode() {
+    return c.hashCode();
+  }
+
   /**
    * Create a new class handle on top of a vanilla class
    * @param c Target class
@@ -91,18 +124,5 @@ public class ClassHandle {
 
     // Return existing instance
     return handle;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof Class<?>))
-      return false;
-
-    return c.equals(obj);
-  }
-
-  @Override
-  public int hashCode() {
-    return c.hashCode();
   }
 }

@@ -7,6 +7,7 @@ import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
+import me.blvckbytes.bblibreflect.handle.EnumHandle;
 import me.blvckbytes.bblibreflect.handle.MethodHandle;
 import me.blvckbytes.bblibutil.UnsafeSupplier;
 import me.blvckbytes.bblibutil.logger.ILogger;
@@ -148,6 +149,15 @@ public class ReflectionHelper implements IReflectionHelper {
     try {
       return getClass(rc);
     } catch (ClassNotFoundException e) {
+      return null;
+    }
+  }
+
+  @Override
+  public @Nullable EnumHandle getEnumOptional(RClass rc) {
+    try {
+      return getClass(rc).asEnum();
+    } catch (ClassNotFoundException | IllegalStateException e) {
       return null;
     }
   }

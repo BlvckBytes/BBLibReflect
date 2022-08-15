@@ -1,8 +1,8 @@
 package me.blvckbytes.bblibreflect;
 
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
+import me.blvckbytes.bblibreflect.handle.EnumHandle;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -49,6 +49,14 @@ public interface IReflectionHelper {
    * @return Loaded class, if available
    */
   @Nullable ClassHandle getClassOptional(RClass rc);
+
+  /**
+   * Load a known reflection required class as an enumeration
+   * by it's identifier
+   * @param rc Class identifier
+   * @return Loaded enumeration, if available
+   */
+  @Nullable EnumHandle getEnumOptional(RClass rc);
 
   /**
    * Get the version specific burning time of any material within
