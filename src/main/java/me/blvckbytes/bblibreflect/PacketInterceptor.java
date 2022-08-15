@@ -15,10 +15,11 @@ import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
+import org.bukkit.metadata.Metadatable;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Proxy;
@@ -64,10 +65,17 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   // List of wrapped players
   private final Map<UUID, ICustomizableViewer> viewers;
 
+  // Mapping players to their last known client version (used for reloads)
+  private Map<UUID, Integer> clientVersions;
+
+  // Used to buffer the clientVersions map across reloads
+  private final Metadatable clientVersionBuffer;
+
   // Vanilla channel future list before proxying, used for restoring
   @Nullable private Object vanillaChannelFutureList;
 
   private final ILogger logger;
+  private final APlugin plugin;
 
   private final FieldHandle F_ENTITY_PLAYER__PLAYER_CONNECTION, F_PLAYER_CONNECTION__NETWORK_MANAGER,
     F_NETWORK_MANAGER__CHANNEL, F_CRAFT_SERVER__MINECRAFT_SERVER, F_MINECRAFT_SERVER__SERVER_CONNECTION,
@@ -114,9 +122,11 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     // Packet modifier registry
     this.globalModifiers = Collections.synchronizedList(new ArrayList<>());
     this.specificModifiers = Collections.synchronizedMap(new HashMap<>());
+    this.clientVersions = Collections.synchronizedMap(new HashMap<>());
 
     this.viewers = Collections.synchronizedMap(new HashMap<>());
     this.logger = logger;
+    this.plugin = plugin;
 
     // Generate a globally unique handler name
     this.HANDLER_NAME = (
@@ -128,6 +138,12 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
     // Register self as a modifier
     globalModifiers.add(new Tuple<>(this, ModificationPriority.HIGH));
+
+    // Store client versions temporarily on the first available world
+    this.clientVersionBuffer = Bukkit.getWorlds().get(0);
+
+    // Proxy the network manager list
+    proxyFutureList();
   }
 
   //=========================================================================//
@@ -191,7 +207,13 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
   @Override
   public ICustomizableViewer getPlayerAsViewer(Player p) {
-    return viewers.get(p.getUniqueId());
+    ICustomizableViewer viewer = viewers.get(p.getUniqueId());
+
+    // For some reason, the viewer is not available yet, inject now
+    if (viewer == null)
+      viewer = inject(p);
+
+    return viewer;
   }
 
   @Override
@@ -201,6 +223,10 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
   @Override
   public void cleanup() {
+    // Update the client version buffer map
+    clientVersionBuffer.removeMetadata(HANDLER_NAME, plugin);
+    clientVersionBuffer.setMetadata(HANDLER_NAME, new FixedMetadataValue(plugin, clientVersions));
+
     // Unproxy the network manager list
     unproxyFutureList();
 
@@ -227,9 +253,23 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void initialize() {
-    // Proxy the network manager list
-    proxyFutureList();
+    List<MetadataValue> metadata = clientVersionBuffer.getMetadata(HANDLER_NAME);
+
+    // Loop through all stored values
+    for (MetadataValue value : metadata) {
+      // Not by this plugin
+      if (!value.getOwningPlugin().equals(plugin))
+        continue;
+
+      // Not a map
+      if (!(value.value() instanceof Map))
+        continue;
+
+      // Set the cache to the metadata value
+      this.clientVersions = (Map<UUID, Integer>) value.value();
+    }
 
     // Inject all players after a reload
     for (Player p : Bukkit.getOnlinePlayers())
@@ -242,9 +282,13 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
   @EventHandler
   public void onQuit(PlayerQuitEvent e) {
+    // Uninject the player
     IPacketReceiver receiver = viewers.remove(e.getPlayer().getUniqueId());
     if (receiver != null)
       uninject(receiver);
+
+    // Also remove the version cache
+    clientVersions.remove(e.getPlayer().getUniqueId());
   }
 
   //=========================================================================//
@@ -255,7 +299,7 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
    * Inject a player manually, used after reloads
    * @param p Target player
    */
-  private void inject(Player p) {
+  private InterceptedViewer inject(Player p) {
     try {
       // Get the handle of the underlying CraftPlayer
       Object entityPlayer = M_CRAFT_PLAYER__GET_HANDLE.invoke(p);
@@ -269,9 +313,21 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
       // Get the Channel of that NetworkManager
       Channel channel = (Channel) F_NETWORK_MANAGER__CHANNEL.get(networkManager);
 
-      // TODO: Implement
+      // Create a new intercepted viewer
+      InterceptedViewer viewer = new InterceptedViewer(
+        channel, networkManager, logger, M_NETWORK_MANAGER__SEND_PACKET
+      );
+
+      // Try to look up the previous client version in the cache
+      viewer.setClientVersion(clientVersions.getOrDefault(p.getUniqueId(), -1));
+
+      // Set UUID immediately, as it's known already
+      viewer.setUuid(p.getUniqueId());
+      viewers.put(p.getUniqueId(), viewer);
+      return viewer;
     } catch (Exception e) {
       logger.logError(e);
+      return null;
     }
   }
 
@@ -504,6 +560,9 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
         // Also register as a viewer now
         viewers.put(profile.getId(), viewer);
+
+        // Cache the client version
+        clientVersions.put(profile.getId(), viewer.getClientVersion());
       }
 
       // Update the client's window id
