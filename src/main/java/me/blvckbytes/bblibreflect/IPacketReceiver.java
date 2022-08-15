@@ -27,10 +27,12 @@ import java.util.UUID;
 public interface IPacketReceiver {
 
   /**
-   * Sends a batch of packets to this receiver
-   * @param packets Packets to send
+   * Enqueues a new packet to be sent to the receiver and calls
+   * the callback as soon as the packet has been processed
+   * @param packet Packet to send
+   * @param sent Optional completion callback
    */
-  void sendPackets(Object... packets);
+  void sendPacket(Object packet, @Nullable Runnable sent);
 
   /**
    * If available, this retrieves the receiver's UUID

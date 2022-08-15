@@ -66,7 +66,7 @@ public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> 
       F_PO_CHAT__CHAT_MESSAGE_TYPE.set(packet, E_CHAT_MESSAGE_TYPE.getByOrdinal(parameter.isChat() ? 0 : 2));
       F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getJson()));
 
-      receiver.sendPackets(packet);
+      receiver.sendPacket(packet, null);
     } catch (Exception e) {
       logger.logError(e);
     }

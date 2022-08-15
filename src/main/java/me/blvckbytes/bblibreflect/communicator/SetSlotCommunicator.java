@@ -107,7 +107,7 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
       Object craftStack = M_CIS__AS_NMS_COPY.invoke(null, item);
       F_PO_SS__ITEM.set(poss, craftStack);
 
-      receiver.sendPackets(poss);
+      receiver.sendPacket(poss, null);
     } catch (Exception e) {
       logger.logError(e);
     }

@@ -2,6 +2,7 @@ package me.blvckbytes.bblibreflect;
 
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.*;
+import io.netty.util.concurrent.GenericFutureListener;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
@@ -105,7 +106,7 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     C_PO_OPEN_WINDOW                = reflection.getClass(RClass.PACKET_O_OPEN_WINDOW);
 
     M_CRAFT_PLAYER__GET_HANDLE = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
-    M_NETWORK_MANAGER__SEND_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).required();
+    M_NETWORK_MANAGER__SEND_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).withParameters(GenericFutureListener.class).required();
 
     F_ENTITY_PLAYER__PLAYER_CONNECTION    = C_ENTITY_PLAYER.locateField().withType(C_PLAYER_CONNECTION).required();
     F_PLAYER_CONNECTION__NETWORK_MANAGER  = C_PLAYER_CONNECTION.locateField().withType(C_NETWORK_MANAGER).required();
@@ -214,11 +215,6 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
       viewer = inject(p);
 
     return viewer;
-  }
-
-  @Override
-  public void broadcastPackets(Object... packets) {
-    viewers.values().forEach(v -> v.sendPackets(packets));
   }
 
   @Override

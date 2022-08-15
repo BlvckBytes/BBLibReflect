@@ -1,6 +1,8 @@
 package me.blvckbytes.bblibreflect;
 
 import io.netty.channel.Channel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import lombok.Getter;
 import lombok.Setter;
 import me.blvckbytes.bblibreflect.handle.MethodHandle;
@@ -54,10 +56,14 @@ public class InterceptedViewer implements ICustomizableViewer {
   }
 
   @Override
-  public void sendPackets(Object... packets) {
+  public void sendPacket(Object packet, @Nullable Runnable sent) {
     try {
-      for (Object packet : packets)
-        M_NETWORK_MANAGER__SEND_PACKET.invoke(networkManager, packet);
+      M_NETWORK_MANAGER__SEND_PACKET.invoke(
+        networkManager, packet,
+
+        // Wrap the plain runnable in a generic future listener
+        sent == null ? null : (GenericFutureListener<Future<Void>>) voidFuture -> sent.run()
+      );
     } catch (Exception e) {
       logger.logError(e);
     }
