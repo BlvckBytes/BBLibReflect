@@ -3,6 +3,8 @@ package me.blvckbytes.bblibreflect.handle;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +35,7 @@ public class MethodPredicateBuilder extends APredicateBuilder<MethodHandle> {
   private @Nullable Boolean isPublic;
   private @Nullable String name;
   private @Nullable ComparableType returnType;
+  private final List<ComparableType> returnGenerics;
   private final List<ComparableType> parameterTypes;
   private boolean allowSuperclass;
 
@@ -45,6 +48,7 @@ public class MethodPredicateBuilder extends APredicateBuilder<MethodHandle> {
     this.isStatic = false;
     this.allowSuperclass = false;
     this.parameterTypes = new ArrayList<>();
+    this.returnGenerics = new ArrayList<>();
   }
 
   ////////////////////////////////// Modifiers //////////////////////////////////
@@ -120,6 +124,45 @@ public class MethodPredicateBuilder extends APredicateBuilder<MethodHandle> {
    */
   public MethodPredicateBuilder withReturnType(@Nullable ClassHandle type, boolean allowBoxing, Assignability assignability) {
     return withReturnType(type == null ? null : type.get(), allowBoxing, assignability);
+  }
+
+  ////////////////////////////////// Generics ///////////////////////////////////
+
+  /**
+   * Add another generic return type of the target method to the sequence
+   * @param generic Generic type to be present
+   */
+  public MethodPredicateBuilder withReturnGeneric(Class<?> generic) {
+    return withReturnGeneric(generic, false, Assignability.NONE);
+  }
+
+  /**
+   * Add another generic return type of the target method to the sequence
+   * @param generic Generic type to be present
+   * @param allowBoxing Whether boxed and unboxed versions of the type are equivalent
+   * @param assignability Whether assignability matching is enabled, and in which direction
+   */
+  public MethodPredicateBuilder withReturnGeneric(Class<?> generic, boolean allowBoxing, Assignability assignability) {
+    this.returnGenerics.add(new ComparableType(generic, allowBoxing, assignability));
+    return this;
+  }
+
+  /**
+   * Add another generic return type of the target method to the sequence
+   * @param generic Generic type to be present
+   */
+  public MethodPredicateBuilder withReturnGeneric(ClassHandle generic) {
+    return withReturnGeneric(generic.get());
+  }
+
+  /**
+   * Add another generic return type of the target method to the sequence
+   * @param generic Generic type to be present
+   * @param allowBoxing Whether boxed and unboxed versions of the type are equivalent
+   * @param assignability Whether assignability matching is enabled, and in which direction
+   */
+  public MethodPredicateBuilder withReturnGeneric(ClassHandle generic, boolean allowBoxing, Assignability assignability) {
+    return withReturnGeneric(generic.get(), allowBoxing, assignability);
   }
 
   ///////////////////////////////// Parameters //////////////////////////////////
@@ -233,6 +276,22 @@ public class MethodPredicateBuilder extends APredicateBuilder<MethodHandle> {
         // Parameters need to match in sequence
         for (int i = 0; i < numParameters; i++) {
           if (!parameterTypes.get(i).matches(parameters[i]))
+            return false;
+        }
+      }
+
+      // Check generic return parameters, if applicable
+      int numGenerics = returnGenerics.size();
+      if (numGenerics > 0) {
+        Type[] types = ((ParameterizedType) m.getGenericReturnType()).getActualTypeArguments();
+
+        // Not enough generic type parameters available
+        if (types.length < numGenerics)
+          return false;
+
+        // Type parameters need to match in sequence
+        for (int i = 0; i < numGenerics; i++) {
+          if (!returnGenerics.get(i).matches((Class<?>) types[i]))
             return false;
         }
       }

@@ -7,15 +7,13 @@ import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
+import me.blvckbytes.bblibreflect.handle.MethodHandle;
 import me.blvckbytes.bblibutil.UnsafeSupplier;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -45,6 +43,7 @@ public class ReflectionHelper implements IReflectionHelper {
 
   private final ClassHandle C_PACKET_DATA_SERIALIZER;
   private final ConstructorHandle CTOR_PACKET_DATA_SERIALIZER;
+  private final MethodHandle M_CIS__AS_NEW_CRAFT_STACK, M_FURNACE__GET_LUT, M_CIS__GET_TYPE;
 
   private final Map<ClassHandle, UnsafeSupplier<Object>> packetConstructors;
   private final Map<Material, Integer> burningTimes;
@@ -69,8 +68,21 @@ public class ReflectionHelper implements IReflectionHelper {
     this.versionNumbers = parseVersion(this.versionStr);
     this.refactored = this.versionNumbers[1] >= 17;
 
+    ClassHandle C_ITEM = getClass(RClass.ITEM);
+    ClassHandle C_CIS = getClass(RClass.CRAFT_ITEM_STACK);
+    ClassHandle C_TEF = getClass(RClass.TILE_ENTITY_FURNACE);
+
     C_PACKET_DATA_SERIALIZER = getClass(RClass.PACKET_DATA_SERIALIZER);
     CTOR_PACKET_DATA_SERIALIZER = C_PACKET_DATA_SERIALIZER.locateConstructor().withParameters(ByteBuf.class).required();
+    M_CIS__AS_NEW_CRAFT_STACK = C_CIS.locateMethod().withName("asNewCraftStack").withParameters(C_ITEM).withStatic(true).required();
+    M_CIS__GET_TYPE = C_CIS.locateMethod().withName("getType").withReturnType(Material.class).required();
+
+    M_FURNACE__GET_LUT = C_TEF.locateMethod()
+      .withReturnType(Map.class)
+      .withReturnGeneric(C_ITEM)
+      .withReturnGeneric(Integer.class)
+      .withStatic(true)
+      .required();
   }
 
   @Override
@@ -147,24 +159,11 @@ public class ReflectionHelper implements IReflectionHelper {
       return Optional.of(dur);
 
     try {
-      Method newCraftStack = getClass(RClass.CRAFT_ITEM_STACK).get().getDeclaredMethod("asNewCraftStack", getClass(RClass.ITEM).get());
-
-      // There's only one static Map getter function within the furnace
-      // class, which returns a map of item to burning duration in ticks
-      Method lutGetter = Arrays.stream(getClass(RClass.TILE_ENTITY_FURNACE).get().getDeclaredMethods())
-        .filter(m -> Modifier.isStatic(m.getModifiers()) && m.getReturnType().equals(Map.class))
-        .findFirst()
-        .orElse(null);
-
-      // Could not access the method
-      if (lutGetter == null)
-        return Optional.empty();
-
       // Iterate all entries
-      Map<?, ?> lut = (Map<?, ?>) lutGetter.invoke(null);
+      Map<?, ?> lut = (Map<?, ?>) M_FURNACE__GET_LUT.invoke(null);
       for (Map.Entry<?, ?> e : lut.entrySet()) {
-        Object craftStack = newCraftStack.invoke(null, e.getKey());
-        Material m = (Material) craftStack.getClass().getMethod("getType").invoke(craftStack);
+        Object craftStack = M_CIS__AS_NEW_CRAFT_STACK.invoke(null, e.getKey());
+        Material m = (Material) M_CIS__GET_TYPE.invoke(craftStack);
 
         // Material mismatch, continue
         if (!mat.equals(m))
