@@ -57,6 +57,16 @@ public class InterceptedViewer implements ICustomizableViewer {
 
   @Override
   public void sendPacket(Object packet, @Nullable Runnable sent) {
+    // The player's channel is no longer open, don't invoke
+    // the sending method as it would otherwise throw.
+    // This check is extremely cheap, as it usually just checks a socket bitmask.
+    if (!channel.isOpen()) {
+      // Release the packet resource again, if applicable
+      if (sent != null)
+        sent.run();
+      return;
+    }
+
     try {
       M_NETWORK_MANAGER__SEND_PACKET.invoke(
         networkManager, packet,

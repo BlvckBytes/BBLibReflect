@@ -105,7 +105,7 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     C_PO_LOGIN                      = reflection.getClass(RClass.PACKET_O_LOGIN);
     C_PO_OPEN_WINDOW                = reflection.getClass(RClass.PACKET_O_OPEN_WINDOW);
 
-    M_CRAFT_PLAYER__GET_HANDLE = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
+    M_CRAFT_PLAYER__GET_HANDLE     = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
     M_NETWORK_MANAGER__SEND_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).withParameters(GenericFutureListener.class).required();
 
     F_ENTITY_PLAYER__PLAYER_CONNECTION    = C_ENTITY_PLAYER.locateField().withType(C_PLAYER_CONNECTION).required();
@@ -278,12 +278,17 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
   @EventHandler
   public void onQuit(PlayerQuitEvent e) {
-    // Uninject the player
-    IPacketReceiver receiver = viewers.remove(e.getPlayer().getUniqueId());
-    if (receiver != null)
-      uninject(receiver);
+    // Uninject after a sensible amount of time in order to allow
+    // other consumers to still use the viewer wrapper
+    plugin.runTask(() -> {
+      // Uninject the player
+      ICustomizableViewer viewer = viewers.remove(e.getPlayer().getUniqueId());
+      if (viewer != null)
+        uninject(viewer);
+    }, 5);
 
-    // Also remove the version cache
+    // Also remove the version cache (instantly, as the version is
+    // cached in the viewer instance separately)
     clientVersions.remove(e.getPlayer().getUniqueId());
   }
 
