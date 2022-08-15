@@ -42,14 +42,20 @@ import java.util.Optional;
 @AutoConstruct
 public class ReflectionHelper implements IReflectionHelper {
 
+  // Size in bytes of the fake byte buffer size used to create
+  // zero-ed packets if there's no empty default constructor
+  private static final int FAKE_BUF_SIZE = 1024;
+
   private final ClassHandle C_PACKET_DATA_SERIALIZER;
-  private final ConstructorHandle CTOR_PACKET_DATA_SERIALIZER;
   private final MethodHandle M_CIS__AS_NEW_CRAFT_STACK, M_FURNACE__GET_LUT, M_CIS__GET_TYPE;
 
   private final Map<ClassHandle, UnsafeSupplier<Object>> packetConstructors;
   private final Map<Material, Integer> burningTimes;
   private final Map<RClass, ClassHandle> classes;
   private final ILogger logger;
+
+  private final ByteBuf byteBuf;
+  private final Object packetDataSerializer;
 
   // Server version information
   @Getter private final String versionStr;
@@ -74,7 +80,6 @@ public class ReflectionHelper implements IReflectionHelper {
     ClassHandle C_TEF = getClass(RClass.TILE_ENTITY_FURNACE);
 
     C_PACKET_DATA_SERIALIZER = getClass(RClass.PACKET_DATA_SERIALIZER);
-    CTOR_PACKET_DATA_SERIALIZER = C_PACKET_DATA_SERIALIZER.locateConstructor().withParameters(ByteBuf.class).required();
     M_CIS__AS_NEW_CRAFT_STACK = C_CIS.locateMethod().withName("asNewCraftStack").withParameters(C_ITEM).withStatic(true).required();
     M_CIS__GET_TYPE = C_CIS.locateMethod().withName("getType").withReturnType(Material.class).required();
 
@@ -84,12 +89,17 @@ public class ReflectionHelper implements IReflectionHelper {
       .withReturnGeneric(Integer.class)
       .withStatic(true)
       .required();
+
+    ConstructorHandle CTOR_PACKET_DATA_SERIALIZER = C_PACKET_DATA_SERIALIZER.locateConstructor().withParameters(ByteBuf.class).required();
+
+    // Create a single serializer on top of a byte buffer which itself is stateless
+    // to be reused whenever packets are to be created (rewinding the buffer first)
+    this.byteBuf = Unpooled.wrappedBuffer(new byte[FAKE_BUF_SIZE]);
+    this.packetDataSerializer = CTOR_PACKET_DATA_SERIALIZER.newInstance(this.byteBuf);
   }
 
   @Override
   public Object createEmptyPacket(ClassHandle c) {
-    // TODO: Think about a way to cache buffers (thread safe!)
-
     try {
       UnsafeSupplier<Object> creator = packetConstructors.get(c);
 
@@ -115,9 +125,11 @@ public class ReflectionHelper implements IReflectionHelper {
         else {
           creator = () -> {
             // TODO: Think about a way to cache packet instances and re-use them (thread safe!)
-            // Create a new empty byte buffer
-            Object buffer = CTOR_PACKET_DATA_SERIALIZER.newInstance(Unpooled.wrappedBuffer(new byte[1024]));
-            return constructor.newInstance(buffer);
+            synchronized (byteBuf) {
+              // Rewind the buffer and create a new zero-ed packet
+              byteBuf.setIndex(0, FAKE_BUF_SIZE);
+              return constructor.newInstance(packetDataSerializer);
+            }
           };
         }
 
