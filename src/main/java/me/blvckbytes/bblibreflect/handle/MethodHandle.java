@@ -87,4 +87,9 @@ public class MethodHandle {
   public int hashCode() {
     return method.hashCode();
   }
+
+  @Override
+  public String toString() {
+    return method.toString();
+  }
 }

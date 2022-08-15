@@ -86,4 +86,9 @@ public class ConstructorHandle {
   public int hashCode() {
     return constructor.hashCode();
   }
+
+  @Override
+  public String toString() {
+    return constructor.toString();
+  }
 }
