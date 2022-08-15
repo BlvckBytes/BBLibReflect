@@ -5,13 +5,14 @@ import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
-import me.blvckbytes.bblibdi.AutoInjectLate;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
+import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
+import me.blvckbytes.bblibutil.UnsafeSupplier;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -42,10 +43,12 @@ import java.util.Optional;
 @AutoConstruct
 public class ReflectionHelper implements IReflectionHelper {
 
-  private final Class<?> PACKET_DATA_SERIALIZER;
+  private final ClassHandle C_PACKET_DATA_SERIALIZER;
+  private final ConstructorHandle CTOR_PACKET_DATA_SERIALIZER;
 
+  private final Map<ClassHandle, UnsafeSupplier<Object>> packetConstructors;
   private final Map<Material, Integer> burningTimes;
-  private final Map<RClass, Class<?>> classes;
+  private final Map<RClass, ClassHandle> classes;
   private final ILogger logger;
 
   // Server version information
@@ -60,51 +63,56 @@ public class ReflectionHelper implements IReflectionHelper {
 
     this.classes = new HashMap<>();
     this.burningTimes = new HashMap<>();
+    this.packetConstructors = new HashMap<>();
 
     this.versionStr = findVersion();
     this.versionNumbers = parseVersion(this.versionStr);
     this.refactored = this.versionNumbers[1] >= 17;
 
-    this.PACKET_DATA_SERIALIZER = getClass(RClass.PACKET_DATA_SERIALIZER);
-    if (PACKET_DATA_SERIALIZER == null)
-      throw new ClassNotFoundException("Could not find the packet data serializer class.");
+    C_PACKET_DATA_SERIALIZER = getClass(RClass.PACKET_DATA_SERIALIZER);
+    CTOR_PACKET_DATA_SERIALIZER = C_PACKET_DATA_SERIALIZER.locateConstructor().withParameters(ByteBuf.class).required();
   }
 
   @Override
-  public Object createEmptyPacket(Class<?> c) {
-    try {
-      Constructor<?> packetC = null;
-      boolean isPds = false;
+  public Object createEmptyPacket(ClassHandle c) {
+    // TODO: Think about a way to cache buffers (thread safe!)
 
-      // Loop through all available constructors
-      for (Constructor<?> constructor : c.getDeclaredConstructors()) {
-        isPds = (
-          constructor.getParameterCount() == 1 &&
-          constructor.getParameterTypes()[0].equals(PACKET_DATA_SERIALIZER)
+    try {
+      UnsafeSupplier<Object> creator = packetConstructors.get(c);
+
+      // Constructor not yet cached
+      if (creator == null) {
+
+        // Try to use the empty default constructor
+        ConstructorHandle empty = c.locateConstructor().optional();
+
+        ConstructorHandle constructor = (
+          // That didn't yield anything, now require there to
+          // be a packet data serializer constructor
+          empty == null ?
+            c.locateConstructor().withParameters(C_PACKET_DATA_SERIALIZER).required() :
+            empty
         );
 
-        // Found a matching constructor, take and stop looking
-        if (constructor.getParameterCount() == 0 || isPds) {
-          packetC = constructor;
-          packetC.setAccessible(true);
-          break;
+        // Empty default constructor
+        if (constructor.getParameterCount() == 0)
+          creator = constructor::newInstance;
+
+        // Packet data serializer constructor
+        else {
+          creator = () -> {
+            // TODO: Think about a way to cache packet instances and re-use them (thread safe!)
+            // Create a new empty byte buffer
+            Object buffer = CTOR_PACKET_DATA_SERIALIZER.newInstance(Unpooled.wrappedBuffer(new byte[1024]));
+            return constructor.newInstance(buffer);
+          };
         }
+
+        // Store in cache
+        packetConstructors.put(c, creator);
       }
 
-      // No applicable constructor locatable
-      if (packetC == null)
-        throw new IllegalStateException("Could not locate a valid packet constructor!");
-
-      // Is a packet data serializer accepting constructor
-      if (isPds) {
-        // Create a new empty buffer to emptiness read from
-        Constructor<?> pdsC = PACKET_DATA_SERIALIZER.getConstructor(ByteBuf.class);
-        Object buf = pdsC.newInstance(Unpooled.wrappedBuffer(new byte[1024]));
-        return packetC.newInstance(buf);
-      }
-
-      // Is a plain default constructor
-      return packetC.newInstance();
+      return creator.get();
     } catch (Exception e) {
       logger.logError(e);
       return null;
@@ -112,15 +120,24 @@ public class ReflectionHelper implements IReflectionHelper {
   }
 
   @Override
-  public Class<?> getClass(RClass rc) throws ClassNotFoundException {
-    Class<?> c = classes.get(rc);
+  public ClassHandle getClass(RClass rc) throws ClassNotFoundException {
+    ClassHandle c = classes.get(rc);
 
     if (c != null)
       return c;
 
-    c = rc.resolve(refactored, this.versionStr);
+    c = new ClassHandle(rc.resolve(refactored, this.versionStr));
     classes.put(rc, c);
     return c;
+  }
+
+  @Override
+  public @Nullable ClassHandle getClassOptional(RClass rc) {
+    try {
+      return getClass(rc);
+    } catch (ClassNotFoundException e) {
+      return null;
+    }
   }
 
   @Override
@@ -130,11 +147,11 @@ public class ReflectionHelper implements IReflectionHelper {
       return Optional.of(dur);
 
     try {
-      Method newCraftStack = getClass(RClass.CRAFT_ITEM_STACK).getDeclaredMethod("asNewCraftStack", getClass(RClass.ITEM));
+      Method newCraftStack = getClass(RClass.CRAFT_ITEM_STACK).get().getDeclaredMethod("asNewCraftStack", getClass(RClass.ITEM).get());
 
       // There's only one static Map getter function within the furnace
       // class, which returns a map of item to burning duration in ticks
-      Method lutGetter = Arrays.stream(getClass(RClass.TILE_ENTITY_FURNACE).getDeclaredMethods())
+      Method lutGetter = Arrays.stream(getClass(RClass.TILE_ENTITY_FURNACE).get().getDeclaredMethods())
         .filter(m -> Modifier.isStatic(m.getModifiers()) && m.getReturnType().equals(Map.class))
         .findFirst()
         .orElse(null);

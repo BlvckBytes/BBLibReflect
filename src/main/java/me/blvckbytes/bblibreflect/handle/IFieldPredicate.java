@@ -25,11 +25,11 @@ import java.lang.reflect.Field;
 public interface IFieldPredicate {
 
   /**
-   * Field matching predicate, used to decide what field to take
-   * @param f Field reference
-   * @param totalTypeCount How many times that field has been counted
-   * @return null means completely doesn't match, false will increase the type count and true will take that field
+   * Tests whether a given field matches the requirements
+   * @param f Field in question
+   * @param counter Counter, increases by one whenever the predicate yields null
+   * @return True if matching, false otherwise, null to increase the passed counter once
    */
-  Boolean matches(Field f, int totalTypeCount);
+  Boolean matches(Field f, int counter);
 
 }

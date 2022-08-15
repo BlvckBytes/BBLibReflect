@@ -6,8 +6,10 @@ import io.netty.channel.ChannelPipeline;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
-import me.blvckbytes.bblibreflect.handle.AFieldHandle;
-import me.blvckbytes.bblibreflect.handle.AMethodHandle;
+import me.blvckbytes.bblibreflect.handle.Assignability;
+import me.blvckbytes.bblibreflect.handle.FieldHandle;
+import me.blvckbytes.bblibreflect.handle.MethodHandle;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibutil.Tuple;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -50,7 +52,7 @@ import java.util.function.Function;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class PacketInterceptor extends AReflectedAccessor implements IPacketInterceptor, Listener, IAutoConstructed {
+public class PacketInterceptor implements IPacketInterceptor, Listener, IAutoConstructed {
 
   // Name of ChannelHandler within the player's pipeline
   private final String HANDLER_NAME;
@@ -72,55 +74,53 @@ public class PacketInterceptor extends AReflectedAccessor implements IPacketInte
   private final ReentrantLock channelLock;
   private final Function<Player, Integer> windowId;
 
-  private final AFieldHandle F_ENTITY_PLAYER__PLAYER_CONNECTION, F_PLAYER_CONNECTION__NETWORK_MANAGER,
+  private final FieldHandle F_ENTITY_PLAYER__PLAYER_CONNECTION, F_PLAYER_CONNECTION__NETWORK_MANAGER,
     F_NETWORK_MANAGER__CHANNEL, F_CRAFT_SERVER__MINECRAFT_SERVER, F_MINECRAFT_SERVER__SERVER_CONNECTION,
     F_SERVER_CONNECTION__NETWORK_LIST, F_NETWORK_MANAGER__QUEUE, F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE,
     F_CONTAINER__WINDOW_ID;
 
-  private final @Nullable AFieldHandle F_ENTITY_HUMAN__CONTAINER_ACTIVE;
+  private final @Nullable FieldHandle F_ENTITY_HUMAN__CONTAINER_ACTIVE;
 
-  private final AMethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET;
+  private final MethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET;
 
   public PacketInterceptor(
     @AutoInject ILogger logger,
     @AutoInject IReflectionHelper reflection,
     @AutoInject JavaPlugin plugin
   ) throws Exception {
-    super(logger, reflection);
 
-    Class<?> C_CRAFT_SERVER      = requireClass(RClass.CRAFT_SERVER);
-    Class<?> C_PACKET            = requireClass(RClass.PACKET);
-    Class<?> C_MINECRAFT_SERVER  = requireClass(RClass.MINECRAFT_SERVER);
-    Class<?> C_NETWORK_MANAGER   = requireClass(RClass.NETWORK_MANAGER);
-    Class<?> C_CRAFT_PLAYER      = requireClass(RClass.CRAFT_PLAYER);
-    Class<?> C_PLAYER_CONNECTION = requireClass(RClass.PLAYER_CONNECTION);
-    Class<?> C_ENTITY_PLAYER     = requireClass(RClass.ENTITY_PLAYER);
-    Class<?> C_SERVER_CONNECTION = requireClass(RClass.SERVER_CONNECTION);
-    Class<?> C_QUEUED_PACKET     = requireClass(RClass.QUEUED_PACKET);
+    ClassHandle C_CRAFT_SERVER      = reflection.getClass(RClass.CRAFT_SERVER);
+    ClassHandle C_PACKET            = reflection.getClass(RClass.PACKET);
+    ClassHandle C_MINECRAFT_SERVER  = reflection.getClass(RClass.MINECRAFT_SERVER);
+    ClassHandle C_NETWORK_MANAGER   = reflection.getClass(RClass.NETWORK_MANAGER);
+    ClassHandle C_CRAFT_PLAYER      = reflection.getClass(RClass.CRAFT_PLAYER);
+    ClassHandle C_PLAYER_CONNECTION = reflection.getClass(RClass.PLAYER_CONNECTION);
+    ClassHandle C_ENTITY_PLAYER     = reflection.getClass(RClass.ENTITY_PLAYER);
+    ClassHandle C_SERVER_CONNECTION = reflection.getClass(RClass.SERVER_CONNECTION);
+    ClassHandle C_QUEUED_PACKET     = reflection.getClass(RClass.QUEUED_PACKET);
 
-    Class<?> C_ENTITY_HUMAN = requireClass(RClass.ENTITY_HUMAN);
-    Class<?> C_CONTAINER    = requireClass(RClass.CONTAINER);
+    ClassHandle C_ENTITY_HUMAN = reflection.getClass(RClass.ENTITY_HUMAN);
+    ClassHandle C_CONTAINER    = reflection.getClass(RClass.CONTAINER);
 
-    M_CRAFT_PLAYER__GET_HANDLE = requireNamedMethod(C_CRAFT_PLAYER, "getHandle", false);
-    M_NETWORK_MANAGER__SEND_PACKET = requireArgsMethod(C_NETWORK_MANAGER, new Class[] { C_PACKET }, false);
+    M_CRAFT_PLAYER__GET_HANDLE = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
+    M_NETWORK_MANAGER__SEND_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).required();
 
-    F_ENTITY_PLAYER__PLAYER_CONNECTION    = requireScalarField(C_ENTITY_PLAYER, C_PLAYER_CONNECTION, 0, false, false, null);
-    F_PLAYER_CONNECTION__NETWORK_MANAGER  = requireScalarField(C_PLAYER_CONNECTION, C_NETWORK_MANAGER, 0, false, false, null);
-    F_NETWORK_MANAGER__CHANNEL            = requireScalarField(C_NETWORK_MANAGER, Channel.class, 0, false, false, null);
-    F_CRAFT_SERVER__MINECRAFT_SERVER      = requireScalarField(C_CRAFT_SERVER, C_MINECRAFT_SERVER, 0, false, false, null);
-    F_MINECRAFT_SERVER__SERVER_CONNECTION = requireScalarField(C_MINECRAFT_SERVER, C_SERVER_CONNECTION, 0, false, false, null);
-    F_SERVER_CONNECTION__NETWORK_LIST     = requireCollectionField(C_SERVER_CONNECTION, List.class, C_NETWORK_MANAGER, 0, false, false, null);
-    F_NETWORK_MANAGER__QUEUE              = requireCollectionField(C_NETWORK_MANAGER, Queue.class, C_QUEUED_PACKET, 0, false, false, null);
-    F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE = requireScalarField(C_ENTITY_HUMAN, C_CONTAINER, 0, false, false, null);
-    F_ENTITY_HUMAN__CONTAINER_ACTIVE            = optionalScalarField(C_ENTITY_HUMAN, C_CONTAINER, 1, false, false, null);
-    F_CONTAINER__WINDOW_ID = requireScalarField(C_CONTAINER, int.class, 0, false, false, true);
+    F_ENTITY_PLAYER__PLAYER_CONNECTION    = C_ENTITY_PLAYER.locateField().withType(C_PLAYER_CONNECTION).required();
+    F_PLAYER_CONNECTION__NETWORK_MANAGER  = C_PLAYER_CONNECTION.locateField().withType(C_NETWORK_MANAGER).required();
+    F_NETWORK_MANAGER__CHANNEL            = C_NETWORK_MANAGER.locateField().withType(Channel.class).required();
+    F_CRAFT_SERVER__MINECRAFT_SERVER      = C_CRAFT_SERVER.locateField().withType(C_MINECRAFT_SERVER, false, Assignability.TYPE_TO_TARGET).required();
+    F_MINECRAFT_SERVER__SERVER_CONNECTION = C_MINECRAFT_SERVER.locateField().withType(C_SERVER_CONNECTION).required();
+    F_SERVER_CONNECTION__NETWORK_LIST     = C_SERVER_CONNECTION.locateField().withType(List.class).withGeneric(C_NETWORK_MANAGER).required();
+    F_NETWORK_MANAGER__QUEUE              = C_NETWORK_MANAGER.locateField().withType(Queue.class).withGeneric(C_QUEUED_PACKET).required();
+    F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE = C_ENTITY_HUMAN.locateField().withType(C_CONTAINER).required();
+    F_ENTITY_HUMAN__CONTAINER_ACTIVE            = C_ENTITY_HUMAN.locateField().withType(C_CONTAINER).withSkip(1).optional();
+    F_CONTAINER__WINDOW_ID = C_CONTAINER.locateField().withType(int.class).withPublic(true).required();
 
     this.globalModifiers = Collections.synchronizedList(new ArrayList<>());
     this.specificModifiers = Collections.synchronizedMap(new HashMap<>());
     this.viewers = new HashMap<>();
     this.channelLock = new ReentrantLock();
     this.windowId = getWindowIdAccess();
-
     this.logger = logger;
 
     // Generate a globally unique handler name
@@ -538,7 +538,7 @@ public class PacketInterceptor extends AReflectedAccessor implements IPacketInte
   private Function<Player, Integer> getWindowIdAccess() {
     try {
       // Newer versions just have one field (active) where as older have two (default, active)
-      AFieldHandle containerField = (
+      FieldHandle containerField = (
         F_ENTITY_HUMAN__CONTAINER_ACTIVE == null ?
           F_ENTITY_HUMAN__CONTAINER_DEFAULT_OR_ACTIVE :
           F_ENTITY_HUMAN__CONTAINER_ACTIVE

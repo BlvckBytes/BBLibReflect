@@ -1,10 +1,12 @@
 package me.blvckbytes.bblibreflect.handle;
 
+import org.jetbrains.annotations.Nullable;
+
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
   Created On: 08/14/2022
 
-  Represents a reflection handle of a constructor determined by it's args.
+  The base of all predicate builder implementations.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -19,23 +21,17 @@ package me.blvckbytes.bblibreflect.handle;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public class ArgsConstructorHandle extends AConstructorHandle {
+public abstract class APredicateBuilder<T> {
 
-  public ArgsConstructorHandle(
-    Class<?> target,
-    Class<?>[] args
-  ) throws NoSuchMethodException {
-    super(target, (c) -> {
-      if (c.getParameterCount() != args.length)
-        return false;
+  /**
+   * Get the predicate's result and return null if it couldn't be located
+   */
+  public abstract @Nullable T optional();
 
-      Class<?>[] types = c.getParameterTypes();
-      for (int i = 0; i < args.length; i++) {
-        if (!types[i].isAssignableFrom(args[i]))
-          return false;
-      }
+  /**
+   * Get the predicate's result and require that it's not null
+   * @throws Exception Not found exception if the result could not be located
+   */
+  public abstract T required() throws Exception;
 
-      return true;
-    });
-  }
 }

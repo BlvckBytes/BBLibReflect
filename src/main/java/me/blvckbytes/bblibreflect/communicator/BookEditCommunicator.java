@@ -7,8 +7,9 @@ import me.blvckbytes.bblibdi.IAutoConstructed;
 import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.BookEditParameter;
 import me.blvckbytes.bblibreflect.communicator.parameter.SetSlotParameter;
-import me.blvckbytes.bblibreflect.handle.AFieldHandle;
-import me.blvckbytes.bblibreflect.handle.AMethodHandle;
+import me.blvckbytes.bblibreflect.handle.FieldHandle;
+import me.blvckbytes.bblibreflect.handle.MethodHandle;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -56,9 +57,9 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
   private final SetSlotCommunicator setSlot;
   private final Map<Player, BookEditRequest> requests;
 
-  private final @Nullable AFieldHandle F_PI_BE_LINES, F_PI_BE_ITEM;
-  private final Class<?> C_PI_SCS, C_PI_BE;
-  private final AMethodHandle M_CIS__AS_BUKKIT_COPY;
+  private final @Nullable FieldHandle F_PI_BE_LINES, F_PI_BE_ITEM;
+  private final ClassHandle C_PI_SCS, C_PI_BE;
+  private final MethodHandle M_CIS__AS_BUKKIT_COPY;
 
   public BookEditCommunicator(
     @AutoInject ILogger logger,
@@ -69,16 +70,16 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
   ) throws Exception {
     super(logger, helper);
 
-    Class<?> C_CIS  = requireClass(RClass.CRAFT_ITEM_STACK);
-    Class<?> C_IS   = requireClass(RClass.ITEM_STACK);
+    ClassHandle C_CIS  = helper.getClass(RClass.CRAFT_ITEM_STACK);
+    ClassHandle C_IS   = helper.getClass(RClass.ITEM_STACK);
 
-    C_PI_SCS = requireClass(RClass.PACKET_I_SET_CREATIVE_SLOT);
-    C_PI_BE  = requireClass(RClass.PACKET_I_B_EDIT);
+    C_PI_SCS = helper.getClass(RClass.PACKET_I_SET_CREATIVE_SLOT);
+    C_PI_BE  = helper.getClass(RClass.PACKET_I_B_EDIT);
 
-    M_CIS__AS_BUKKIT_COPY = requireNamedMethod(C_CIS, "asBukkitCopy", false);
+    M_CIS__AS_BUKKIT_COPY = C_CIS.locateMethod().withName("asBukkitCopy").withStatic(true).required();
 
-    F_PI_BE_LINES = optionalCollectionField(C_PI_BE, List.class, String.class, 0, false, false, null);
-    F_PI_BE_ITEM  = optionalCollectionField(C_PI_BE, List.class, C_IS, 0, false, false, null);
+    F_PI_BE_LINES = C_PI_BE.locateField().withType(List.class).withGeneric(String.class).optional();
+    F_PI_BE_ITEM  = C_PI_BE.locateField().withType(C_IS).optional();
 
     if (F_PI_BE_LINES == null && F_PI_BE_ITEM == null)
       throw new IllegalStateException("Need one of the two fields.");
@@ -93,7 +94,6 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
   //=========================================================================//
   //                                   API                                   //
   //=========================================================================//
-
 
   @Override
   public void sendParameterized(IPacketReceiver receiver, BookEditParameter parameter) {

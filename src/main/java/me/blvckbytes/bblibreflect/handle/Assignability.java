@@ -1,12 +1,10 @@
 package me.blvckbytes.bblibreflect.handle;
 
-import java.lang.reflect.Method;
-
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
   Created On: 08/14/2022
 
-  A predicate function to search through a list of methods and find a match.
+  Represents all assignability modes when it comes to comparing two types.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -21,14 +19,30 @@ import java.lang.reflect.Method;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-@FunctionalInterface
-public interface IMethodPredicate {
+public enum Assignability {
 
-  /**
-   * Tests whether a given method matches the requirements
-   * @param m Method in question
-   * @return True if matching, false otherwise
+  /*
+    Definition of assignability:
+
+    // Let there be two types
+    TypeA fieldA;
+    TypeB fieldB;
+
+    // If fieldB can be >assigned to< fieldA, TypeB is assignable to TypeA
+    fieldA = fieldB;
+
+    // If fieldA can be >assigned to< fieldB, TypeA is assignable to TypeB
+    fieldB = fieldA;
    */
-  boolean matches(Method m);
+
+  // Can the target's (searched) type be assigned to the type's type?
+  TARGET_TO_TYPE,
+
+  // Can the type's type be assigned to the target's (searched) type?
+  TYPE_TO_TARGET,
+
+  // Assignability is to be ignored
+  NONE
+  ;
 
 }

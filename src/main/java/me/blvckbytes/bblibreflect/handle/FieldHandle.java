@@ -1,9 +1,7 @@
 package me.blvckbytes.bblibreflect.handle;
 
-import lombok.Getter;
-
 import java.lang.reflect.Field;
-import java.util.*;
+import java.lang.reflect.Method;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -24,51 +22,86 @@ import java.util.*;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public abstract class AFieldHandle {
+public class FieldHandle {
 
   private final Field field;
 
-  public AFieldHandle(Class<?> target, IFieldPredicate predicate) throws NoSuchFieldException {
+  /**
+   * Create a new field handle by locating the target field within
+   * the given target class by dispatching the predicate immediately.
+   * @param target Target class to search in
+   * @param predicate Predicate which chooses the matching field
+   * @throws NoSuchFieldException Thrown if the predicate didn't yield any results
+   */
+  public FieldHandle(Class<?> target, IFieldPredicate predicate) throws NoSuchFieldException {
     if (target == null)
       throw new IllegalStateException("Target has to be present.");
 
-    // Keeps track of type occurrences
-    Map<Class<?>, Integer> typeCounters = new HashMap<>();
+    int counter = 0;
     Field res = null;
 
     // Walk up the hierarchy chain
     Class<?> curr = target;
     while (res == null && curr != null && curr != Object.class) {
 
+      // Loop all fields of the current class
       for (Field f : curr.getDeclaredFields()) {
-        int typeCounter = typeCounters.getOrDefault(f.getType(), 0);
-        Boolean result = predicate.matches(f, typeCounter);
+        Boolean result = predicate.matches(f, counter);
 
-        if (result != null && result) {
+        // Null means that it would have matched, but the
+        // skip counter has not yet elapsed
+        if (result == null) {
+          counter++;
+          continue;
+        }
+
+        // Predicate match, take the field
+        if (result) {
           res = f;
           break;
         }
-
-        // Only count up if result wasn't null
-        if (result != null)
-          typeCounters.put(f.getType(), typeCounter + 1);
       }
 
       curr = curr.getSuperclass();
     }
 
+    // The predicate matched on none of them
     if (res == null)
       throw new NoSuchFieldException("Could not satisfy the field predicate.");
 
+    // Set the field accessible and hold a reference to it
     this.field = res;
     this.field.setAccessible(true);
   }
 
+  /**
+   * Set the field's value on an object instance
+   * @param o Target object to modify
+   * @param v Field value to set
+   */
   public void set(Object o, Object v) throws IllegalAccessException {
     this.field.set(o, v);
   }
 
+  /**
+   * Get the field's value from an object instance
+   * @param o Target object to read from
+   * @return Field value
+   */
   public Object get(Object o) throws IllegalAccessException {
     return this.field.get(o);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof Field))
+      return false;
+
+    return field.equals(obj);
+  }
+
+  @Override
+  public int hashCode() {
+    return field.hashCode();
   }
 }

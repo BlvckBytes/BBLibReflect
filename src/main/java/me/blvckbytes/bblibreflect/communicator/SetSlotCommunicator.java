@@ -7,8 +7,9 @@ import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.SetSlotParameter;
-import me.blvckbytes.bblibreflect.handle.AFieldHandle;
-import me.blvckbytes.bblibreflect.handle.AMethodHandle;
+import me.blvckbytes.bblibreflect.handle.FieldHandle;
+import me.blvckbytes.bblibreflect.handle.MethodHandle;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
@@ -37,10 +38,10 @@ import org.jetbrains.annotations.Nullable;
 @AutoConstruct
 public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
 
-  private final AFieldHandle F_PO_SS__WINDOW_ID, F_PO_SS__STATE_ID_OR_SLOT, F_PO_SS__ITEM;
-  private final AMethodHandle M_CIS__AS_NMS_COPY;
-  private final @Nullable AFieldHandle F_POSS__SLOT;
-  private final Class<?> C_PO_SS;
+  private final FieldHandle F_PO_SS__WINDOW_ID, F_PO_SS__STATE_ID_OR_SLOT, F_PO_SS__ITEM;
+  private final MethodHandle M_CIS__AS_NMS_COPY;
+  private final @Nullable FieldHandle F_POSS__SLOT;
+  private final ClassHandle C_PO_SS;
 
   public SetSlotCommunicator(
     @AutoInject ILogger logger,
@@ -48,17 +49,17 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
   ) throws Exception {
     super(logger, helper);
 
-    Class<?> C_CIS  = requireClass(RClass.CRAFT_ITEM_STACK);
-    Class<?> C_IS   = requireClass(RClass.ITEM_STACK);
+    ClassHandle C_CIS  = helper.getClass(RClass.CRAFT_ITEM_STACK);
+    ClassHandle C_IS   = helper.getClass(RClass.ITEM_STACK);
 
-    C_PO_SS = requireClass(RClass.PACKET_O_SET_SLOT);
+    C_PO_SS = helper.getClass(RClass.PACKET_O_SET_SLOT);
 
-    F_PO_SS__WINDOW_ID = requireScalarField(C_PO_SS, int.class, 0, false, false, null);
-    F_PO_SS__STATE_ID_OR_SLOT = requireScalarField(C_PO_SS, int.class, 1, false, false, null);
-    F_POSS__SLOT             = optionalScalarField(C_PO_SS, int.class, 2, false, false, null);
-    F_PO_SS__ITEM = requireScalarField(C_PO_SS, C_IS, 0, false, false, null);
+    F_PO_SS__WINDOW_ID        = C_PO_SS.locateField().withType(int.class).required();
+    F_PO_SS__STATE_ID_OR_SLOT = C_PO_SS.locateField().withType(int.class).withSkip(1).required();
+    F_POSS__SLOT              = C_PO_SS.locateField().withType(int.class).withSkip(2).optional();
+    F_PO_SS__ITEM             = C_PO_SS.locateField().withType(C_IS).required();
 
-    M_CIS__AS_NMS_COPY = requireNamedMethod(C_CIS, "asNMSCopy", false);
+    M_CIS__AS_NMS_COPY = C_CIS.locateMethod().withName("asNMSCopy").withStatic(true).required();
   }
 
   @Override

@@ -1,7 +1,9 @@
 package me.blvckbytes.bblibreflect;
 
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -32,14 +34,21 @@ public interface IReflectionHelper {
    * @param c Class to create
    * @return Empty packet instance
    */
-  Object createEmptyPacket(Class<?> c);
+  Object createEmptyPacket(ClassHandle c);
 
   /**
    * Load a known reflection required class by it's identifier
    * @param rc Class identifier
    * @return Loaded class, if available
    */
-  Class<?> getClass(RClass rc) throws ClassNotFoundException;
+  ClassHandle getClass(RClass rc) throws ClassNotFoundException;
+
+  /**
+   * Load a known reflection required class by it's identifier
+   * @param rc Class identifier
+   * @return Loaded class, if available
+   */
+  @Nullable ClassHandle getClassOptional(RClass rc);
 
   /**
    * Get the version specific burning time of any material within

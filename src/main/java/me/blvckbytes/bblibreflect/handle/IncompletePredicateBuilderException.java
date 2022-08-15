@@ -1,12 +1,12 @@
 package me.blvckbytes.bblibreflect.handle;
 
-import java.lang.reflect.Method;
-
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
   Created On: 08/14/2022
 
-  A predicate function to search through a list of methods and find a match.
+  Thrown whenever the result of a predicate builder was tried to be
+  retrieved but the builder didn't have enough information to execute
+  it's predicate yet.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -21,14 +21,4 @@ import java.lang.reflect.Method;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-@FunctionalInterface
-public interface IMethodPredicate {
-
-  /**
-   * Tests whether a given method matches the requirements
-   * @param m Method in question
-   * @return True if matching, false otherwise
-   */
-  boolean matches(Method m);
-
-}
+public class IncompletePredicateBuilderException extends RuntimeException {}

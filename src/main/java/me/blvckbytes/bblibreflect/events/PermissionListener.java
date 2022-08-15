@@ -3,10 +3,10 @@ package me.blvckbytes.bblibreflect.events;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
-import me.blvckbytes.bblibreflect.AReflectedAccessor;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
-import me.blvckbytes.bblibreflect.handle.AFieldHandle;
+import me.blvckbytes.bblibreflect.handle.FieldHandle;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibutil.APlugin;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
@@ -54,7 +54,7 @@ import java.util.stream.Collectors;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class PermissionListener extends AReflectedAccessor implements Listener, IAutoConstructed {
+public class PermissionListener implements Listener, IAutoConstructed {
 
   // Ticks that need to elapse until the last modifying call is actually routed
   private static final long DEBOUNCE_TICKS = 10;
@@ -67,19 +67,22 @@ public class PermissionListener extends AReflectedAccessor implements Listener, 
   // The previous permission list (last permission change call) for every player
   private final Map<Player, List<String>> previousPermissions;
 
-  private final AFieldHandle F_CRAFT_PLAYER__PERMISSIBLE_BASE, F_PERMISSIBLE_BASE__PERMISSIONS;
+  private final FieldHandle F_CRAFT_PLAYER__PERMISSIBLE_BASE, F_PERMISSIBLE_BASE__PERMISSIONS;
+
+  private final ILogger logger;
 
   public PermissionListener(
     @AutoInject APlugin plugin,
     @AutoInject ILogger logger,
-    @AutoInject IReflectionHelper helper
+    @AutoInject IReflectionHelper reflection
   ) throws Exception {
-    super(logger, helper);
+    this.logger = logger;
 
-    Class<?> C_CRAFT_PLAYER = requireClass(RClass.CRAFT_PLAYER);
+    ClassHandle C_CRAFT_PLAYER = reflection.getClass(RClass.CRAFT_PLAYER);
+    ClassHandle C_PERMISSIBLE_BASE = ClassHandle.of(PermissibleBase.class);
 
-    F_CRAFT_PLAYER__PERMISSIBLE_BASE = requireScalarField(C_CRAFT_PLAYER, PermissibleBase.class, 0, true, false, null);
-    F_PERMISSIBLE_BASE__PERMISSIONS  = requireMapField(PermissibleBase.class, String.class, PermissionAttachmentInfo.class, Map.class, 0, false, false, null);
+    F_CRAFT_PLAYER__PERMISSIBLE_BASE = C_CRAFT_PLAYER.locateField().withType(C_PERMISSIBLE_BASE).withAllowSuperclass(true).required();
+    F_PERMISSIBLE_BASE__PERMISSIONS  = C_PERMISSIBLE_BASE.locateField().withType(Map.class).withGeneric(String.class).withGeneric(PermissionAttachmentInfo.class).required();
 
     this.plugin = plugin;
     this.vanillaRefs = new HashMap<>();

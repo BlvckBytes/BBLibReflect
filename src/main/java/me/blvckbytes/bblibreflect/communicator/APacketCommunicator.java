@@ -1,6 +1,5 @@
 package me.blvckbytes.bblibreflect.communicator;
 
-import me.blvckbytes.bblibreflect.AReflectedAccessor;
 import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibutil.logger.ILogger;
@@ -24,12 +23,16 @@ import me.blvckbytes.bblibutil.logger.ILogger;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public abstract class APacketCommunicator<T> extends AReflectedAccessor {
+public abstract class APacketCommunicator<T> {
+
+  protected final ILogger logger;
+  protected final IReflectionHelper helper;
 
   public APacketCommunicator(
     ILogger logger, IReflectionHelper helper
   ) {
-    super(logger, helper);
+    this.logger = logger;
+    this.helper = helper;
   }
 
   public abstract void sendParameterized(IPacketReceiver receiver, T parameter);
