@@ -2,6 +2,10 @@ package me.blvckbytes.bblibreflect;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -123,6 +127,10 @@ public enum RClass {
     "net.minecraft.network.protocol.login.PacketLoginOutSuccess",
     "net.minecraft.server.{v}.PacketLoginOutSuccess"
   ),
+  PACKET_O_KEEP_ALIVE(
+    "net.minecraft.network.protocol.game.PacketPlayOutKeepAlive",
+    "net.minecraft.server.{v}.PacketPlayOutKeepAlive"
+  ),
   ENUM_TITLE_ACTION(
     "",
     "net.minecraft.server.{v}.PacketPlayOutTitle$EnumTitleAction"
@@ -154,6 +162,10 @@ public enum RClass {
   PACKET_I_HANDSHAKE(
     "net.minecraft.network.protocol.handshake.PacketHandshakingInSetProtocol",
     "net.minecraft.server.{v}.PacketHandshakingInSetProtocol"
+  ),
+  PACKET_I_KEEP_ALIVE(
+    "net.minecraft.network.protocol.game.PacketPlayInKeepAlive",
+    "net.minecraft.server.{v}.PacketPlayInKeepAlive"
   ),
   TILE_ENTITY_FURNACE(
     "net.minecraft.world.level.block.entity.TileEntityFurnace",
@@ -226,8 +238,25 @@ public enum RClass {
   ;
 
   private final String afterRefactor, beforeRefactor;
+  private static final Map<RClass, ClassHandle> cache;
 
-  public Class<?> resolve(boolean afterRefactor, String version) throws ClassNotFoundException {
-    return Class.forName((afterRefactor ? this.afterRefactor : this.beforeRefactor).replace("{v}", version));
+  static {
+    cache = new HashMap<>();
+  }
+
+  public ClassHandle resolve(boolean afterRefactor, String version) throws ClassNotFoundException {
+    ClassHandle res = cache.get(this);
+
+    // Respond with cache result
+    if (res != null)
+      return res;
+
+    // Load class and then cache
+    res = ClassHandle.of(
+      Class.forName((afterRefactor ? this.afterRefactor : this.beforeRefactor).replace("{v}", version))
+    );
+
+    cache.put(this, res);
+    return res;
   }
 }

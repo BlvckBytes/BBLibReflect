@@ -1,11 +1,10 @@
-package me.blvckbytes.bblibreflect;
+package me.blvckbytes.bblibreflect.communicator.parameter;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/13/2022
+  Created On: 08/14/2022
 
-  Represents a viewer of a customizable resource which will influence
-  it's representation based on their abilities.
+  Represents all player info update actions.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -20,27 +19,23 @@ package me.blvckbytes.bblibreflect;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface ICustomizableViewer extends IPacketReceiver {
+public enum PlayerInfoAction {
 
-  /**
-   * Get the currently open window ID of the player
-   */
-  int getCurrentWindowId();
+  // Add a player to the tab list
+  ADD_PLAYER,
 
-  /**
-   * Whether this viewer cannot render hex colors
-   */
-  boolean cannotRenderHexColors();
+  // Update a player's game mode
+  UPDATE_GAME_MODE,
 
-  /**
-   * Get the version number of the client
-   */
-  int getClientVersion();
+  // Update the latency indicator of a player
+  UPDATE_LATENCY,
 
-  /**
-   * Get the ping value, which in essence is the time
-   * between keep alive requests and the client's response
-   */
-  int getPing();
+  // Update the displayed name of a player
+  UPDATE_DISPLAY_NAME,
+
+  // Remove a player from the tab list
+  REMOVE_PLAYER
+
+  ;
 
 }

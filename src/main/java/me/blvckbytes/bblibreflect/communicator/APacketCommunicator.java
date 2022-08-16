@@ -1,8 +1,15 @@
 package me.blvckbytes.bblibreflect.communicator;
 
+import me.blvckbytes.bblibreflect.ICustomizableViewer;
+import me.blvckbytes.bblibreflect.IPacketInterceptor;
 import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.bukkit.entity.Player;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -27,15 +34,67 @@ public abstract class APacketCommunicator<T> {
 
   protected final ILogger logger;
   protected final IReflectionHelper helper;
+  protected final IPacketInterceptor interceptor;
 
   public APacketCommunicator(
-    ILogger logger, IReflectionHelper helper
+    ILogger logger,
+    IReflectionHelper helper,
+    IPacketInterceptor interceptor
   ) {
     this.logger = logger;
     this.helper = helper;
+    this.interceptor = interceptor;
   }
 
+  /**
+   * Sends a new packet of the communicator's managed type
+   * @param receivers Receivers of the packet
+   * @param parameter Parameter used to initialize the packet
+   */
+  public abstract void sendParameterized(List<IPacketReceiver> receivers, T parameter);
+
+  /**
+   * Sends a new packet of the communicator's managed type
+   * @param receiver Receiver of the packet
+   * @param parameter Parameter used to initialize the packet
+   */
   public abstract void sendParameterized(IPacketReceiver receiver, T parameter);
 
+  /**
+   * Sends a new packet of the communicator's managed type
+   * @param receivers Receivers of the packet
+   * @param parameter Parameter used to initialize the packet
+   */
+  public void sendParameterized(Collection<Player> receivers, T parameter) {
+    this.sendParameterized(
+      receivers.stream()
+        .map(interceptor::getPlayerAsViewer)
+        .collect(Collectors.toList()),
+      parameter
+    );
+  }
+
+  /**
+   * Sends a new packet of the communicator's managed type
+   * @param receiver Receiver of the packet
+   * @param parameter Parameter used to initialize the packet
+   */
+  public void sendParameterized(Player receiver, T parameter) {
+    this.sendParameterized(
+      interceptor.getPlayerAsViewer(receiver),
+      parameter
+    );
+  }
+
+  /**
+   * Require the packet receiver to be a viewer
+   * @param receiver Packet receiver to interpret as a viewer
+   * @return Viewer instance
+   */
+  protected ICustomizableViewer asViewer(IPacketReceiver receiver) {
+    if (!(receiver instanceof ICustomizableViewer))
+      throw new IllegalStateException("This operation requires the receiver to be an ICustomizableViewer.");
+    return ((ICustomizableViewer) receiver);
+  }
 }
 

@@ -1,11 +1,12 @@
-package me.blvckbytes.bblibreflect;
+package me.blvckbytes.bblibreflect.communicator.parameter;
+
+import org.bukkit.entity.Player;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/13/2022
+  Created On: 08/14/2022
 
-  Represents a viewer of a customizable resource which will influence
-  it's representation based on their abilities.
+  Represents all player info game mode values.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -20,27 +21,33 @@ package me.blvckbytes.bblibreflect;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface ICustomizableViewer extends IPacketReceiver {
+public enum EnumGameMode {
+
+  NOT_SET,
+  SURVIVAL,
+  CREATIVE,
+  ADVENTURE,
+  SPECTATOR
+  ;
 
   /**
-   * Get the currently open window ID of the player
+   * Get the enum constant matching a player's game mode
+   * @param p Target player
+   * @return Matching constant
    */
-  int getCurrentWindowId();
+  public static EnumGameMode getFromPlayer(Player p) {
+    switch (p.getGameMode()) {
+      case CREATIVE:
+        return CREATIVE;
+      case SURVIVAL:
+        return SURVIVAL;
+      case ADVENTURE:
+        return ADVENTURE;
+      case SPECTATOR:
+        return SPECTATOR;
 
-  /**
-   * Whether this viewer cannot render hex colors
-   */
-  boolean cannotRenderHexColors();
-
-  /**
-   * Get the version number of the client
-   */
-  int getClientVersion();
-
-  /**
-   * Get the ping value, which in essence is the time
-   * between keep alive requests and the client's response
-   */
-  int getPing();
-
+      default:
+        return NOT_SET;
+    }
+  }
 }

@@ -80,11 +80,12 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
   private final FieldHandle F_ENTITY_PLAYER__PLAYER_CONNECTION, F_PLAYER_CONNECTION__NETWORK_MANAGER,
     F_NETWORK_MANAGER__CHANNEL, F_CRAFT_SERVER__MINECRAFT_SERVER, F_MINECRAFT_SERVER__SERVER_CONNECTION,
-    F_SERVER_CONNECTION__FUTURE_LIST, F_PI_HANDSHAKE__VERSION,  F_PO_LOGIN__GAME_PROFILE, F_PO_OPEN_WINDOW__WINDOW_ID;
+    F_SERVER_CONNECTION__FUTURE_LIST, F_PI_HANDSHAKE__VERSION,  F_PO_LOGIN__GAME_PROFILE, F_PO_OPEN_WINDOW__WINDOW_ID,
+    F_PI_KEEP_ALIVE__ID, F_PO_KEEP_ALIVE__ID;
 
   private final MethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET, M_CHANNEL_INITIALIZER__INIT_CHANNEL;
 
-  private final ClassHandle C_PI_HANDSHAKE,  C_PO_OPEN_WINDOW, C_PO_LOGIN;
+  private final ClassHandle C_PI_HANDSHAKE,  C_PO_OPEN_WINDOW, C_PO_LOGIN, C_PI_KEEP_ALIVE, C_PO_KEEP_ALIVE;
 
   public PacketInterceptor(
     @AutoInject ILogger logger,
@@ -101,9 +102,11 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     ClassHandle C_ENTITY_PLAYER     = reflection.getClass(RClass.ENTITY_PLAYER);
     ClassHandle C_SERVER_CONNECTION = reflection.getClass(RClass.SERVER_CONNECTION);
 
-    C_PI_HANDSHAKE                  = reflection.getClass(RClass.PACKET_I_HANDSHAKE);
-    C_PO_LOGIN                      = reflection.getClass(RClass.PACKET_O_LOGIN);
-    C_PO_OPEN_WINDOW                = reflection.getClass(RClass.PACKET_O_OPEN_WINDOW);
+    C_PI_HANDSHAKE   = reflection.getClass(RClass.PACKET_I_HANDSHAKE);
+    C_PO_LOGIN       = reflection.getClass(RClass.PACKET_O_LOGIN);
+    C_PO_OPEN_WINDOW = reflection.getClass(RClass.PACKET_O_OPEN_WINDOW);
+    C_PO_KEEP_ALIVE  = reflection.getClass(RClass.PACKET_O_KEEP_ALIVE);
+    C_PI_KEEP_ALIVE  = reflection.getClass(RClass.PACKET_I_KEEP_ALIVE);
 
     M_CRAFT_PLAYER__GET_HANDLE     = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
     M_NETWORK_MANAGER__SEND_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).withParameters(GenericFutureListener.class).required();
@@ -117,6 +120,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     F_PI_HANDSHAKE__VERSION      = C_PI_HANDSHAKE.locateField().withType(int.class).required();
     F_PO_LOGIN__GAME_PROFILE     = C_PO_LOGIN.locateField().withType(GameProfile.class).required();
     F_PO_OPEN_WINDOW__WINDOW_ID  = C_PO_OPEN_WINDOW.locateField().withType(int.class).required();
+    F_PI_KEEP_ALIVE__ID  = C_PI_KEEP_ALIVE.locateField().withType(long.class).required();
+    F_PO_KEEP_ALIVE__ID  = C_PO_KEEP_ALIVE.locateField().withType(long.class).required();
 
     M_CHANNEL_INITIALIZER__INIT_CHANNEL = ClassHandle.of(ChannelInitializer.class).locateMethod().withName("initChannel").withParameters(Channel.class).required();
 
@@ -533,10 +538,24 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     InterceptedViewer viewer = (InterceptedViewer) sender;
 
     try {
+      // Incoming keep alive response
+      if (C_PI_KEEP_ALIVE.isInstance(incoming)) {
+        long id = (long) F_PI_KEEP_ALIVE__ID.get(incoming);
+
+        // Only update if the response ID matched
+        if (viewer.getLastHandshakeRequestId() == id)
+          viewer.completedHandshake();
+
+        return incoming;
+      }
+
+      // TODO: Manually send a keep alive requesting packet after join to get a ping value faster
+
       // Update the client version, now that it's known
       if (C_PI_HANDSHAKE.isInstance(incoming)) {
         int version = (int) F_PI_HANDSHAKE__VERSION.get(incoming);
         viewer.setClientVersion(version);
+        return incoming;
       }
     } catch (Exception e) {
       logger.logError(e);
@@ -554,6 +573,13 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     InterceptedViewer viewer = (InterceptedViewer) receiver;
 
     try {
+      // Outgoing keep alive request
+      if (C_PO_KEEP_ALIVE.isInstance(outgoing)) {
+        viewer.setLastHandshakeRequestStamp(System.currentTimeMillis());
+        viewer.setLastHandshakeRequestId((long) F_PO_KEEP_ALIVE__ID.get(outgoing));
+        return outgoing;
+      }
+
       // Update the UUID, now that it's known
       if (C_PO_LOGIN.isInstance(outgoing)) {
         GameProfile profile = (GameProfile) F_PO_LOGIN__GAME_PROFILE.get(outgoing);

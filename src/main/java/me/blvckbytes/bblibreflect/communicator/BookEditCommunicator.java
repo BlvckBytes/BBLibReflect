@@ -53,6 +53,8 @@ import java.util.*;
 @AutoConstruct
 public class BookEditCommunicator extends APacketCommunicator<BookEditParameter> implements IPacketModifier, Listener, IAutoConstructed {
 
+  // TODO: This class is doing way too much for a packet communicator...
+
   private final APlugin plugin;
   private final SetSlotCommunicator setSlot;
   private final Map<Player, BookEditRequest> requests;
@@ -68,7 +70,7 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
     @AutoInject SetSlotCommunicator setSlot,
     @AutoInject IPacketInterceptor interceptor
   ) throws Exception {
-    super(logger, helper);
+    super(logger, helper, interceptor);
 
     ClassHandle C_CIS  = helper.getClass(RClass.CRAFT_ITEM_STACK);
     ClassHandle C_IS   = helper.getClass(RClass.ITEM_STACK);
@@ -94,6 +96,15 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
   //=========================================================================//
   //                                   API                                   //
   //=========================================================================//
+
+  @Override
+  public void sendParameterized(List<IPacketReceiver> receivers, BookEditParameter parameter) {
+    if (receivers.size() != 1)
+      throw new IllegalStateException("The book editor only supports single targets.");
+
+    IPacketReceiver receiver = receivers.get(0);
+    sendParameterized(receiver, parameter);
+  }
 
   @Override
   public void sendParameterized(IPacketReceiver receiver, BookEditParameter parameter) {
@@ -173,7 +184,7 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
     // Re-set the slot back to the fake item after the game loop ticked
     // as the client will now have noticed and changed it back
     plugin.runTask(() -> {
-      setSlot.sendParameterized(req.receiver, new SetSlotParameter(req.fakeItem, (req.slot + 36) % 36, false));
+      setSlot.sendParameterized(List.of(req.receiver), new SetSlotParameter(req.fakeItem, (req.slot + 36) % 36, false));
     });
   }
 

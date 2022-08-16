@@ -2,10 +2,7 @@ package me.blvckbytes.bblibreflect.communicator;
 
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
-import me.blvckbytes.bblibreflect.ICustomizableViewer;
-import me.blvckbytes.bblibreflect.IPacketReceiver;
-import me.blvckbytes.bblibreflect.IReflectionHelper;
-import me.blvckbytes.bblibreflect.RClass;
+import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.SetSlotParameter;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibreflect.handle.MethodHandle;
@@ -14,6 +11,8 @@ import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -45,9 +44,10 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
 
   public SetSlotCommunicator(
     @AutoInject ILogger logger,
-    @AutoInject IReflectionHelper helper
+    @AutoInject IReflectionHelper helper,
+    @AutoInject IPacketInterceptor interceptor
   ) throws Exception {
-    super(logger, helper);
+    super(logger, helper, interceptor);
 
     ClassHandle C_CIS  = helper.getClass(RClass.CRAFT_ITEM_STACK);
     ClassHandle C_IS   = helper.getClass(RClass.ITEM_STACK);
@@ -63,9 +63,17 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
   }
 
   @Override
+  public void sendParameterized(List<IPacketReceiver> receivers, SetSlotParameter parameter) {
+    // TODO: Extract common procedures above the loop
+
+    for (IPacketReceiver receiver : receivers) {
+      sendParameterized(List.of(receiver), parameter);
+    }
+  }
+
+  @Override
   public void sendParameterized(IPacketReceiver receiver, SetSlotParameter parameter) {
-    if (!(receiver instanceof ICustomizableViewer))
-      throw new IllegalStateException("Cannot send a slot change to a non-viewer receiver.");
+    ICustomizableViewer viewer = asViewer(receiver);
 
     this.setSlot(
       receiver,
@@ -73,7 +81,7 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
       parameter.getSlot(),
 
       // A window id of -2 means own inventory
-      parameter.isTop() ? ((ICustomizableViewer) receiver).getCurrentWindowId() : -2
+      parameter.isTop() ? viewer.getCurrentWindowId() : -2
     );
   }
 

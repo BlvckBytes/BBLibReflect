@@ -1,6 +1,5 @@
 package me.blvckbytes.bblibreflect.communicator.parameter;
 
-import com.google.gson.JsonElement;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,10 +7,10 @@ import me.blvckbytes.bblibutil.component.IComponent;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/14/2022
+  Created On: 08/16/2022
 
-  A parameter used to define which JSON message to send in either the chat
-  or the action-bar when using the ChatCommunicator.
+  A parameter used to define which title and subtitle to display with
+  what timings when using the TitleCommunicator.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -26,15 +25,24 @@ import me.blvckbytes.bblibutil.component.IComponent;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-@Getter
 @Setter
+@Getter
 @AllArgsConstructor
-public class ChatMessageParameter {
+public class TitleParameter {
 
-  // Json message to be serialized
-  IComponent message;
+  // Title to display on top
+  private IComponent title;
 
-  // If true, the message will be sent to chat, if false, to the action-bar
-  boolean chat;
+  // Subtitle to display below
+  private IComponent subtitle;
+
+  // Time in ticks to take while fading the title in
+  private int fadeIn;
+
+  // Time in ticks to display the title
+  private int duration;
+
+  // Time in ticks to take while fading the title out
+  private int fadeOut;
 
 }

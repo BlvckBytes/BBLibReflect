@@ -51,7 +51,6 @@ public class ReflectionHelper implements IReflectionHelper {
 
   private final Map<ClassHandle, UnsafeSupplier<Object>> packetConstructors;
   private final Map<Material, Integer> burningTimes;
-  private final Map<RClass, ClassHandle> classes;
   private final ILogger logger;
 
   private final ByteBuf byteBuf;
@@ -67,7 +66,6 @@ public class ReflectionHelper implements IReflectionHelper {
   ) throws Exception {
     this.logger = logger;
 
-    this.classes = new HashMap<>();
     this.burningTimes = new HashMap<>();
     this.packetConstructors = new HashMap<>();
 
@@ -146,14 +144,7 @@ public class ReflectionHelper implements IReflectionHelper {
 
   @Override
   public ClassHandle getClass(RClass rc) throws ClassNotFoundException {
-    ClassHandle c = classes.get(rc);
-
-    if (c != null)
-      return c;
-
-    c = new ClassHandle(rc.resolve(refactored, this.versionStr));
-    classes.put(rc, c);
-    return c;
+    return rc.resolve(refactored, this.versionStr);
   }
 
   @Override

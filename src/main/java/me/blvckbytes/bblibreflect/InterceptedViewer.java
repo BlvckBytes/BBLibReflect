@@ -30,7 +30,6 @@ import java.util.UUID;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-@Setter
 @Getter
 public class InterceptedViewer implements ICustomizableViewer {
 
@@ -39,9 +38,13 @@ public class InterceptedViewer implements ICustomizableViewer {
   private final ILogger logger;
   private final MethodHandle M_NETWORK_MANAGER__SEND_PACKET;
 
-  private @Nullable UUID uuid;
-  private int clientVersion;
-  private int currentWindowId;
+  @Setter private @Nullable UUID uuid;
+  @Setter private int clientVersion;
+  @Setter private int currentWindowId;
+
+  @Setter private long lastHandshakeRequestStamp;
+  @Setter private long lastHandshakeRequestId;
+  private int ping;
 
   public InterceptedViewer(
     Channel channel,
@@ -83,5 +86,33 @@ public class InterceptedViewer implements ICustomizableViewer {
   public boolean cannotRenderHexColors() {
     // 721: 1.16-pre1, should be the first to support HEX
     return clientVersion < 721;
+  }
+
+  /**
+   * Called whenever the client responded *successfully* to a handshake packet
+   */
+  public void completedHandshake() {
+    // Calculate the time it took the client to respond
+    int responseTime = (int) (System.currentTimeMillis() - this.lastHandshakeRequestStamp);
+
+    // Cap the value towards zero, in case of glitches
+    if (responseTime < 0)
+      responseTime = 0;
+
+    /*
+      Try to calculate the ping like the PlayerConnection does it:
+
+      // SystemUtils.b() is equivalent to System.currentTimeMillis()
+      // this.g is the stamp of sending out the keep alive request
+      // Thus, i is the response time in milliseconds
+      int i = (int)(SystemUtils.b() - this.g);
+
+      // The ping is updated by merging the previous value with the new value
+      // and weighting the previous value more, to avoid big value jumps.
+      this.b.e = (this.b.e * 3 + i) / 4;
+     */
+
+    this.ping = (this.ping * 3 + responseTime) / 4;
+    System.out.println("ping=" + ping);
   }
 }

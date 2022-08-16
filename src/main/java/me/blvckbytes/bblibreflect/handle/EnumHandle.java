@@ -24,6 +24,8 @@ import java.util.List;
 */
 public class EnumHandle extends ClassHandle {
 
+  // TODO: Check against enum copies if they match the number of entries, else throw
+
   private final List<Enum<?>> e;
 
   /**
@@ -57,5 +59,16 @@ public class EnumHandle extends ClassHandle {
     } catch (Exception e) {
       throw new EnumConstantNotPresentException((Class<? extends Enum<?>>) c, "ordinal=" + ordinal);
     }
+  }
+
+  /**
+   * Get an enumeration constant by looking up the ordinal of a
+   * copy enum which has it's constants sorted in the exact same order.
+   * @param other Constant of a copy
+   * @return Enumeration constant
+   * @throws EnumConstantNotPresentException Thrown if there is no constant with this ordinal value
+   */
+  public Enum<?> getByCopy(Enum<?> other) throws EnumConstantNotPresentException {
+    return getByOrdinal(other.ordinal());
   }
 }
