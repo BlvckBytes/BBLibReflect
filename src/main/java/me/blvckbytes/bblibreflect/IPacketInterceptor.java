@@ -25,6 +25,8 @@ import java.util.UUID;
 */
 public interface IPacketInterceptor {
 
+  // TODO: Inject packet into incoming stream
+
   /**
    * Register a new modifier for all players
    * @param modifier Packet modifier to register

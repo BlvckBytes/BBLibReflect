@@ -46,6 +46,8 @@ public abstract class APacketCommunicator<T> {
     this.interceptor = interceptor;
   }
 
+  // TODO: Packet parsing
+
   /**
    * Sends a new packet of the communicator's managed type
    * @param receivers Receivers of the packet

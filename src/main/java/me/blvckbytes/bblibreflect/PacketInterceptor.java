@@ -408,11 +408,13 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
       // Get it's server connection
       Object serverConnection = F_MINECRAFT_SERVER__SERVER_CONNECTION.get(minecraftServer);
 
-      // Restore the vanilla list ref
-      F_SERVER_CONNECTION__FUTURE_LIST.set(serverConnection, vanillaChannelFutureList);
+      // Restore the vanilla list ref while synchronizing on it
+      synchronized (F_SERVER_CONNECTION__FUTURE_LIST.get(serverConnection)) {
+        F_SERVER_CONNECTION__FUTURE_LIST.set(serverConnection, vanillaChannelFutureList);
 
-      // Clear the ref again
-      vanillaChannelFutureList = null;
+        // Clear the ref again
+        vanillaChannelFutureList = null;
+      }
     } catch (Exception e) {
       logger.logError(e);
     }
