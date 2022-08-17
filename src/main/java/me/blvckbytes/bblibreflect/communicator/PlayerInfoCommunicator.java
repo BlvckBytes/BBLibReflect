@@ -145,14 +145,26 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
    * @param viewer Viewer to personalize for
    */
   private void personalizePlayerInfoList(List<Object> playerInfoList, PlayerInfoParameter parameter, ICustomizableViewer viewer) throws Exception {
-    // Personalize all player info entries for the current viewer
-    for (int i = 0; i < parameter.getEntries().size(); i++) {
-      PlayerInfoParameter.Entry entry = parameter.getEntries().get(i);
-      Object playerInfo = playerInfoList.get(i);
+    // Just a single entry
+    if (parameter.getEntry() != null) {
+      PlayerInfoParameter.Entry entry = parameter.getEntry();
+      Object playerInfo = playerInfoList.get(0);
 
       // Personalize the current entry's component
       JsonObject json = entry.getName() == null ? null : entry.getName().toJson(viewer.cannotRenderHexColors());
       F_PLAYER_INFO_DATA__COMPONENT.set(playerInfo, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, json));
+    }
+
+    else if (parameter.getEntries() != null) {
+      // Personalize all player info entries for the current viewer
+      for (int i = 0; i < parameter.getEntries().size(); i++) {
+        PlayerInfoParameter.Entry entry = parameter.getEntries().get(i);
+        Object playerInfo = playerInfoList.get(i);
+
+        // Personalize the current entry's component
+        JsonObject json = entry.getName() == null ? null : entry.getName().toJson(viewer.cannotRenderHexColors());
+        F_PLAYER_INFO_DATA__COMPONENT.set(playerInfo, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, json));
+      }
     }
   }
 
@@ -171,21 +183,32 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
     List<Object> playerInfoList = new ArrayList<>();
     F_PO_PLAYER_INFO__LIST.set(info, playerInfoList);
 
+    // Just a single entry
+    if (parameter.getEntry() != null)
+      playerInfoList.add(createBasePlayerInfoData(parameter.getEntry()));
+
     // Each entry maps to a player info data object
-    for (PlayerInfoParameter.Entry entry : parameter.getEntries()) {
-
-      // Create the object with a null-component which is to be personalized later
-      Object data = CT_PLAYER_INFO_DATA.newInstance(
-        entry.resolveGameProfile(M_CRAFT_PLAYER__GET_PROFILE),
-        entry.resolveLatency(interceptor),
-        E_ENUM_GAME_MODE.getByCopy(entry.resolveGameMode()),
-        null
-      );
-
-      playerInfoList.add(data);
+    else if (parameter.getEntries() != null) {
+      for (PlayerInfoParameter.Entry entry : parameter.getEntries())
+        playerInfoList.add(createBasePlayerInfoData(entry));
     }
 
     return new Tuple<>(info, playerInfoList);
+  }
+
+  /**
+   * Create a new base instance of the player info data by setting all
+   * of it's properties except the personalized component (is set to null).
+   * @param entry Entry to create from
+   */
+  private Object createBasePlayerInfoData(PlayerInfoParameter.Entry entry) throws Exception {
+    // Create the object with a null-component which is to be personalized later
+    return CT_PLAYER_INFO_DATA.newInstance(
+      entry.resolveGameProfile(M_CRAFT_PLAYER__GET_PROFILE),
+      entry.resolveLatency(interceptor),
+      E_ENUM_GAME_MODE.getByCopy(entry.resolveGameMode()),
+      null
+    );
   }
 
   @Override

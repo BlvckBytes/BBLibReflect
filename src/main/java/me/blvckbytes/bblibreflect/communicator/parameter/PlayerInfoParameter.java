@@ -1,7 +1,6 @@
 package me.blvckbytes.bblibreflect.communicator.parameter;
 
 import com.mojang.authlib.GameProfile;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -36,7 +35,6 @@ import java.util.List;
 */
 @Setter
 @Getter
-@AllArgsConstructor
 public class PlayerInfoParameter {
 
   @Setter
@@ -207,6 +205,30 @@ public class PlayerInfoParameter {
   private PlayerInfoAction action;
 
   // List of entries to perform that specified action on
-  private List<Entry> entries;
+  // Null if there's only a single entry
+  private @Nullable List<Entry> entries;
 
+  // Single entry to perform that specified action on
+  // Null if there are multiple entries
+  private @Nullable Entry entry;
+
+  /**
+   * Create a new info parameter for multiple entries
+   * @param action Action to perform on all entries
+   * @param entries List of entry descriptions
+   */
+  public PlayerInfoParameter(PlayerInfoAction action, @NonNull List<Entry> entries) {
+    this.action = action;
+    this.entries = entries;
+  }
+
+  /**
+   * Create a new info parameter for a single entry
+   * @param action Action to perform on the entry
+   * @param entry Entry description
+   */
+  public PlayerInfoParameter(PlayerInfoAction action, @NonNull Entry entry) {
+    this.action = action;
+    this.entry = entry;
+  }
 }
