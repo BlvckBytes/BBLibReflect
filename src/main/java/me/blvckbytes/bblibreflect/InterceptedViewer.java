@@ -113,6 +113,5 @@ public class InterceptedViewer implements ICustomizableViewer {
      */
 
     this.ping = (this.ping * 3 + responseTime) / 4;
-    System.out.println("ping=" + ping);
   }
 }

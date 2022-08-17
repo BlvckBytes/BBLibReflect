@@ -98,16 +98,7 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
   //=========================================================================//
 
   @Override
-  public void sendParameterized(List<IPacketReceiver> receivers, BookEditParameter parameter) {
-    if (receivers.size() != 1)
-      throw new IllegalStateException("The book editor only supports single targets.");
-
-    IPacketReceiver receiver = receivers.get(0);
-    sendParameterized(receiver, parameter);
-  }
-
-  @Override
-  public void sendParameterized(IPacketReceiver receiver, BookEditParameter parameter) {
+  public CommunicatorResult sendToViewer(BookEditParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
     Player p = parameter.getPlayer();
 
     // Cancel any previous requests
@@ -128,10 +119,10 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
     plugin.runTask(() -> {
       // Set the book as a fake slot item
       int slot = p.getInventory().getHeldItemSlot();
-      setSlot.sendParameterized(receiver, new SetSlotParameter(book, (slot + 36) % 36, false));
+      setSlot.sendToViewer(new SetSlotParameter(book, (slot + 36) % 36, false), viewer, done);
 
       // Register the request
-      this.requests.put(p, new BookEditRequest(receiver, parameter, book, slot));
+      this.requests.put(p, new BookEditRequest(viewer, parameter, book, slot));
 
       // Set the cancel hook, if applicable
       if (parameter.getCancelHook() != null) {
@@ -141,6 +132,18 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
         });
       }
     });
+
+    return CommunicatorResult.SUCCESS;
+  }
+
+  @Override
+  public CommunicatorResult sendToPlayer(BookEditParameter parameter, Player player, @Nullable Runnable done) {
+    return sendToViewer(parameter, interceptor.getPlayerAsViewer(player), done);
+  }
+
+  @Override
+  public Class<BookEditParameter> getParameterType() {
+    return BookEditParameter.class;
   }
 
   @Override
@@ -184,7 +187,7 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
     // Re-set the slot back to the fake item after the game loop ticked
     // as the client will now have noticed and changed it back
     plugin.runTask(() -> {
-      setSlot.sendParameterized(List.of(req.receiver), new SetSlotParameter(req.fakeItem, (req.slot + 36) % 36, false));
+      setSlot.sendToViewer(new SetSlotParameter(req.fakeItem, (req.slot + 36) % 36, false), req.viewer, null);
     });
   }
 
@@ -360,7 +363,7 @@ public class BookEditCommunicator extends APacketCommunicator<BookEditParameter>
    */
   @AllArgsConstructor
   private static class BookEditRequest {
-    IPacketReceiver receiver;
+    ICustomizableViewer viewer;
     BookEditParameter parameter;
     ItemStack fakeItem;
     int slot;

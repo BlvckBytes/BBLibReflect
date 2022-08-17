@@ -1,15 +1,14 @@
 package me.blvckbytes.bblibreflect.communicator;
 
-import me.blvckbytes.bblibreflect.ICustomizableViewer;
 import me.blvckbytes.bblibreflect.IPacketInterceptor;
 import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
+import me.blvckbytes.bblibutil.UnsafeBiConsumer;
 import me.blvckbytes.bblibutil.logger.ILogger;
-import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -30,7 +29,7 @@ import java.util.stream.Collectors;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public abstract class APacketCommunicator<T> {
+public abstract class APacketCommunicator<T> implements IPacketCommunicator<T> {
 
   protected final ILogger logger;
   protected final IReflectionHelper helper;
@@ -44,59 +43,67 @@ public abstract class APacketCommunicator<T> {
     this.logger = logger;
     this.helper = helper;
     this.interceptor = interceptor;
-  }
 
-  // TODO: Packet parsing
-
-  /**
-   * Sends a new packet of the communicator's managed type
-   * @param receivers Receivers of the packet
-   * @param parameter Parameter used to initialize the packet
-   */
-  public abstract void sendParameterized(List<IPacketReceiver> receivers, T parameter);
-
-  /**
-   * Sends a new packet of the communicator's managed type
-   * @param receiver Receiver of the packet
-   * @param parameter Parameter used to initialize the packet
-   */
-  public abstract void sendParameterized(IPacketReceiver receiver, T parameter);
-
-  /**
-   * Sends a new packet of the communicator's managed type
-   * @param receivers Receivers of the packet
-   * @param parameter Parameter used to initialize the packet
-   */
-  public void sendParameterized(Collection<Player> receivers, T parameter) {
-    this.sendParameterized(
-      receivers.stream()
-        .map(interceptor::getPlayerAsViewer)
-        .collect(Collectors.toList()),
-      parameter
-    );
+    interceptor.registerCommunicator(this);
   }
 
   /**
-   * Sends a new packet of the communicator's managed type
-   * @param receiver Receiver of the packet
-   * @param parameter Parameter used to initialize the packet
+   * Get the type of parameter this communicator accepts
    */
-  public void sendParameterized(Player receiver, T parameter) {
-    this.sendParameterized(
-      interceptor.getPlayerAsViewer(receiver),
-      parameter
-    );
+  public abstract Class<T> getParameterType();
+
+  /**
+   * Sends multiple packets to a given receiver and, if required, synchronizes
+   * their completion callback to only invoke the provided callback after all packets completed
+   * @param receiver Target receiver to send to
+   * @param done Optional callback, called when all packets are done
+   * @param packets Packets to send
+   */
+  protected void sendPacketsToReceiver(IPacketReceiver receiver, @Nullable Runnable done, Object... packets) {
+    // No callback required, just perform a sending invocation
+    if (done == null) {
+      for (Object packet : packets)
+        receiver.sendPacket(packet, null);
+      return;
+    }
+
+    AtomicInteger completionCount = new AtomicInteger(0);
+
+    for (Object packet : packets) {
+      receiver.sendPacket(packet, () -> {
+        // Check if it's the last packet that completed, if so, call the callback
+        if (completionCount.incrementAndGet() == packets.length)
+          done.run();
+      });
+    }
   }
 
   /**
-   * Require the packet receiver to be a viewer
-   * @param receiver Packet receiver to interpret as a viewer
-   * @return Viewer instance
+   * Sends multiple packets to each of a collection of multiple receivers and, if required,
+   * synchronizes the completion callback of each receiver's iteration to only call the provided
+   * callback after all iterations themselves completed
+   * @param receivers Collection of target receivers to send to
+   * @param done Optional callback, called when all packets are done
+   * @param sendingRoutine Routine used to tend out packets to a single receiver of the
+   *                       collection, taking the receiver and a completion callback
    */
-  protected ICustomizableViewer asViewer(IPacketReceiver receiver) {
-    if (!(receiver instanceof ICustomizableViewer))
-      throw new IllegalStateException("This operation requires the receiver to be an ICustomizableViewer.");
-    return ((ICustomizableViewer) receiver);
+  protected<R> void sendPacketsToReceivers(Collection<R> receivers, @Nullable Runnable done, UnsafeBiConsumer<R, @Nullable Runnable> sendingRoutine) throws Exception {
+    // No callback required, just perform an iteration invocation
+    if (done == null) {
+      for (R receiver : receivers)
+        sendingRoutine.accept(receiver, null);
+      return;
+    }
+
+    AtomicInteger completionCount = new AtomicInteger(0);
+
+    for (R receiver : receivers) {
+      // Check if it's the last iteration that completed, if so, call the callback
+      sendingRoutine.accept(receiver, () -> {
+        if (completionCount.incrementAndGet() == receivers.size())
+          done.run();
+      });
+    }
   }
 }
 

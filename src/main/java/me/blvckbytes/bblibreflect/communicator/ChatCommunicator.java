@@ -7,8 +7,10 @@ import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.ChatMessageParameter;
 import me.blvckbytes.bblibreflect.handle.*;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
+import java.util.Collection;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -60,24 +62,73 @@ public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> 
   }
 
   @Override
-  public void sendParameterized(List<IPacketReceiver> receivers, ChatMessageParameter parameter) {
-    for (IPacketReceiver receiver : receivers)
-      sendParameterized(receiver, parameter);
+  public CommunicatorResult sendToViewer(ChatMessageParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
+    try {
+      Object packet = createPacket(parameter);
+
+      F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getMessage().toJson(viewer.cannotRenderHexColors())));
+
+      viewer.sendPacket(packet, done);
+      return CommunicatorResult.SUCCESS;
+    } catch (Exception e) {
+      logger.logError(e);
+      return CommunicatorResult.REFLECTION_ERROR;
+    }
   }
 
   @Override
-  public void sendParameterized(IPacketReceiver receiver, ChatMessageParameter parameter) {
-    ICustomizableViewer viewer = asViewer(receiver);
-
+  public CommunicatorResult sendToViewers(ChatMessageParameter parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
     try {
-      Object packet = helper.createEmptyPacket(C_PO_CHAT);
+      Object packet = createPacket(parameter);
 
-      F_PO_CHAT__CHAT_MESSAGE_TYPE.set(packet, E_CHAT_MESSAGE_TYPE.getByOrdinal(parameter.isChat() ? 0 : 2));
-      F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getMessage().toJson(viewer.cannotRenderHexColors())));
+      sendPacketsToReceivers(viewers, done, (viewer, subDone) -> {
+        F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getMessage().toJson(viewer.cannotRenderHexColors())));
+        viewer.sendPacket(packet, done);
+      });
 
-      receiver.sendPacket(packet, null);
+      return CommunicatorResult.SUCCESS;
     } catch (Exception e) {
       logger.logError(e);
+      return CommunicatorResult.REFLECTION_ERROR;
     }
+  }
+
+  @Override
+  public CommunicatorResult sendToPlayer(ChatMessageParameter parameter, Player player, @Nullable Runnable done) {
+    return sendToViewer(parameter, interceptor.getPlayerAsViewer(player), done);
+  }
+
+  @Override
+  public CommunicatorResult sendToPlayers(ChatMessageParameter parameter, Collection<? extends Player> players, @Nullable Runnable done) {
+    try {
+      Object packet = createPacket(parameter);
+
+      sendPacketsToReceivers(players, done, (player, subDone) -> {
+        ICustomizableViewer viewer = interceptor.getPlayerAsViewer(player);
+        F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getMessage().toJson(viewer.cannotRenderHexColors())));
+        viewer.sendPacket(packet, done);
+      });
+
+      return CommunicatorResult.SUCCESS;
+    } catch (Exception e) {
+      logger.logError(e);
+      return CommunicatorResult.REFLECTION_ERROR;
+    }
+  }
+
+  @Override
+  public Class<ChatMessageParameter> getParameterType() {
+    return ChatMessageParameter.class;
+  }
+
+  /**
+   * Create the packet base with only the chat message type set
+   * @param parameter Parameter to extract the type from
+   * @return Constructed packet
+   */
+  private Object createPacket(ChatMessageParameter parameter) throws Exception {
+    Object packet = helper.createEmptyPacket(C_PO_CHAT);
+    F_PO_CHAT__CHAT_MESSAGE_TYPE.set(packet, E_CHAT_MESSAGE_TYPE.getByOrdinal(parameter.isChat() ? 0 : 2));
+    return packet;
   }
 }

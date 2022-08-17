@@ -6,9 +6,12 @@ import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.TitleParameter;
 import me.blvckbytes.bblibreflect.handle.*;
+import me.blvckbytes.bblibutil.Triple;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
+import java.util.Collection;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -98,59 +101,129 @@ public class TitleCommunicator extends APacketCommunicator<TitleParameter> {
       throw new IllegalStateException("Couldn't find neither newer nor older title packets.");
   }
 
+  //=========================================================================//
+  //                                 Sending                                 //
+  //=========================================================================//
+
   @Override
-  public void sendParameterized(List<IPacketReceiver> receivers, TitleParameter parameter) {
-    // TODO: Reuse packets properly
-    for (IPacketReceiver receiver : receivers)
-      sendParameterized(receiver, parameter);
+  public CommunicatorResult sendToViewer(TitleParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
+    try {
+      Triple<Object, Object, Object> packets = createPackets(parameter);
+
+      personalizeTitles(packets, parameter, viewer);
+      sendPacketsToReceiver(viewer, done, packets.getA(), packets.getB(), packets.getC());
+
+      return CommunicatorResult.SUCCESS;
+    } catch (Exception e) {
+      logger.logError(e);
+      return CommunicatorResult.REFLECTION_ERROR;
+    }
   }
 
   @Override
-  public void sendParameterized(IPacketReceiver receiver, TitleParameter parameter) {
-    ICustomizableViewer viewer = asViewer(receiver);
-
+  public CommunicatorResult sendToViewers(TitleParameter parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
     try {
-      Object setTimes, setTitle, setSubtitle;
+      Triple<Object, Object, Object> packets = createPackets(parameter);
 
-      // Older version, create three different instances of the same packet
-      if (!isNewerTitles) {
-        setTimes = helper.createEmptyPacket(C_PO_TITLE);
-        setTitle = helper.createEmptyPacket(C_PO_TITLE);
-        setSubtitle = helper.createEmptyPacket(C_PO_TITLE);
+      sendPacketsToReceivers(viewers, done, (viewer, subDone) -> {
+        personalizeTitles(packets, parameter, viewer);
+        sendPacketsToReceiver(viewer, subDone, packets.getA(), packets.getB(), packets.getC());
+      });
 
-        // 0 TITLE, 1 SUBTITLE, 2 ACTIONBAR, 3 TIMES, 4 CLEAR, 5 RESET
-
-        F_PO_TITLE__ENUM_TITLE_ACTION.set(setTimes, E_ENUM_TITLE_ACTION.getByOrdinal(3));
-        F_PO_TITLE__FADE_IN.set(setTimes, parameter.getFadeIn());
-        F_PO_TITLE__STAY.set(setTimes, parameter.getDuration());
-        F_PO_TITLE__FADE_OUT.set(setTimes, parameter.getFadeOut());
-
-        F_PO_TITLE__ENUM_TITLE_ACTION.set(setTitle, E_ENUM_TITLE_ACTION.getByOrdinal(0));
-        F_PO_TITLE__BASE_COMPONENT.set(setTitle, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getTitle().toJson(viewer.cannotRenderHexColors())));
-
-        F_PO_TITLE__ENUM_TITLE_ACTION.set(setTimes, E_ENUM_TITLE_ACTION.getByOrdinal(1));
-        F_PO_TITLE__BASE_COMPONENT.set(setSubtitle, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getSubtitle().toJson(viewer.cannotRenderHexColors())));
-      }
-
-      // Newer version, create three different packets
-      else {
-        setTimes = helper.createEmptyPacket(C_CLB_TITLES_ANIMATION);
-        setTitle = helper.createEmptyPacket(C_CLB_TITLE);
-        setSubtitle = helper.createEmptyPacket(C_CLB_SUBTITLE);
-
-        F_CLB_TITLES_ANIMATION__FADE_IN.set(setTimes, parameter.getFadeIn());
-        F_CLB_TITLES_ANIMATION__STAY.set(setTimes, parameter.getDuration());
-        F_CLB_TITLES_ANIMATION__FADE_OUT.set(setTimes, parameter.getFadeOut());
-
-        F_CLB_TITLE__BASE_COMPONENT.set(setTitle, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getTitle().toJson(viewer.cannotRenderHexColors())));
-        F_CLB_SUBTITLE__BASE_COMPONENT.set(setSubtitle, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getSubtitle().toJson(viewer.cannotRenderHexColors())));
-      }
-
-      viewer.sendPacket(setTimes, null);
-      viewer.sendPacket(setTitle, null);
-      viewer.sendPacket(setSubtitle, null);
+      return CommunicatorResult.SUCCESS;
     } catch (Exception e) {
       logger.logError(e);
+      return CommunicatorResult.REFLECTION_ERROR;
     }
+  }
+
+  @Override
+  public CommunicatorResult sendToPlayer(TitleParameter parameter, Player player, @Nullable Runnable done) {
+    return sendToViewer(parameter, interceptor.getPlayerAsViewer(player), done);
+  }
+
+  @Override
+  public CommunicatorResult sendToPlayers(TitleParameter parameter, Collection<? extends Player> players, @Nullable Runnable done) {
+    try {
+      Triple<Object, Object, Object> packets = createPackets(parameter);
+
+      sendPacketsToReceivers(players, done, (player, subDone) -> {
+        ICustomizableViewer viewer = interceptor.getPlayerAsViewer(player);
+        personalizeTitles(packets, parameter, viewer);
+        sendPacketsToReceiver(viewer, subDone, packets.getA(), packets.getB(), packets.getC());
+      });
+
+      return CommunicatorResult.SUCCESS;
+    } catch (Exception e) {
+      logger.logError(e);
+      return CommunicatorResult.REFLECTION_ERROR;
+    }
+  }
+
+  /**
+   * Applies personalized titles to packets
+   * @param packets Packets to apply to
+   * @param parameter Parameter to use for personalization
+   * @param viewer Viewer to personalize for
+   */
+  private void personalizeTitles(Triple<Object, Object, Object> packets, TitleParameter parameter, ICustomizableViewer viewer) throws Exception {
+    // Create a personalized title- and subtitle component
+    Object titleComponent = M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getTitle().toJson(viewer.cannotRenderHexColors()));
+    Object subTitleComponent = M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getSubtitle().toJson(viewer.cannotRenderHexColors()));
+
+    // Decide on which fields to apply to
+
+    if (!isNewerTitles) {
+      F_PO_TITLE__BASE_COMPONENT.set(packets.getB(), titleComponent);
+      F_PO_TITLE__BASE_COMPONENT.set(packets.getC(), subTitleComponent);
+    }
+
+    else {
+      F_CLB_TITLE__BASE_COMPONENT.set(packets.getB(), M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getTitle().toJson(viewer.cannotRenderHexColors())));
+      F_CLB_SUBTITLE__BASE_COMPONENT.set(packets.getC(), M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getSubtitle().toJson(viewer.cannotRenderHexColors())));
+    }
+  }
+
+  /**
+   * Create the packet bases with all parameters set except the base
+   * component itself (has to be personalized).
+   * @param parameter Parameter to extract the information from
+   * @return Constructed packet
+   */
+  private Triple<Object, Object, Object> createPackets(TitleParameter parameter) throws Exception {
+    Object setTimes, setTitle, setSubtitle;
+
+    // Older version, create three different instances of the same packet
+    if (!isNewerTitles) {
+      setTimes = helper.createEmptyPacket(C_PO_TITLE);
+      setTitle = helper.createEmptyPacket(C_PO_TITLE);
+      setSubtitle = helper.createEmptyPacket(C_PO_TITLE);
+
+      F_PO_TITLE__ENUM_TITLE_ACTION.set(setTimes, E_ENUM_TITLE_ACTION.getByOrdinal(3));
+      F_PO_TITLE__FADE_IN.set(setTimes, parameter.getFadeIn());
+      F_PO_TITLE__STAY.set(setTimes, parameter.getDuration());
+      F_PO_TITLE__FADE_OUT.set(setTimes, parameter.getFadeOut());
+
+      F_PO_TITLE__ENUM_TITLE_ACTION.set(setTitle, E_ENUM_TITLE_ACTION.getByOrdinal(0));
+      F_PO_TITLE__ENUM_TITLE_ACTION.set(setTimes, E_ENUM_TITLE_ACTION.getByOrdinal(1));
+    }
+
+    // Newer version, create three different packets
+    else {
+      setTimes = helper.createEmptyPacket(C_CLB_TITLES_ANIMATION);
+      setTitle = helper.createEmptyPacket(C_CLB_TITLE);
+      setSubtitle = helper.createEmptyPacket(C_CLB_SUBTITLE);
+
+      F_CLB_TITLES_ANIMATION__FADE_IN.set(setTimes, parameter.getFadeIn());
+      F_CLB_TITLES_ANIMATION__STAY.set(setTimes, parameter.getDuration());
+      F_CLB_TITLES_ANIMATION__FADE_OUT.set(setTimes, parameter.getFadeOut());
+    }
+
+    return new Triple<>(setTimes, setTitle, setSubtitle);
+  }
+
+  @Override
+  public Class<TitleParameter> getParameterType() {
+    return TitleParameter.class;
   }
 }

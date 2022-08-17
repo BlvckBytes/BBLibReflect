@@ -1,5 +1,6 @@
 package me.blvckbytes.bblibreflect;
 
+import me.blvckbytes.bblibreflect.communicator.IPacketCommunicatorRegistry;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
@@ -23,9 +24,7 @@ import java.util.UUID;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface IPacketInterceptor {
-
-  // TODO: Inject packet into incoming stream
+public interface IPacketInterceptor extends IPacketCommunicatorRegistry {
 
   /**
    * Register a new modifier for all players

@@ -6,6 +6,8 @@ import io.netty.util.concurrent.GenericFutureListener;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
+import me.blvckbytes.bblibreflect.communicator.APacketCommunicator;
+import me.blvckbytes.bblibreflect.communicator.CommunicatorResult;
 import me.blvckbytes.bblibreflect.handle.Assignability;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
@@ -65,6 +67,9 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
   // List of wrapped players
   private final Map<UUID, ICustomizableViewer> viewers;
+
+  // Mapping communicator parameter types to their managing communicator
+  private final Map<Class<?>, APacketCommunicator<Object>> communicators;
 
   // Mapping players to their last known client version (used for reloads)
   private Map<UUID, Integer> clientVersions;
@@ -129,6 +134,7 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     this.globalModifiers = Collections.synchronizedList(new ArrayList<>());
     this.specificModifiers = Collections.synchronizedMap(new HashMap<>());
     this.clientVersions = Collections.synchronizedMap(new HashMap<>());
+    this.communicators = new HashMap<>();
 
     this.viewers = Collections.synchronizedMap(new HashMap<>());
     this.logger = logger;
@@ -604,5 +610,135 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     }
 
     return outgoing;
+  }
+
+  //=========================================================================//
+  //                              Communicators                              //
+  //=========================================================================//
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public void registerCommunicator(APacketCommunicator<?> communicator) {
+    communicators.put(communicator.getParameterType(), (APacketCommunicator<Object>) communicator);
+  }
+
+  @Override
+  public CommunicatorResult sendToReceiver(Object parameter, IPacketReceiver receiver, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.sendToReceiver(parameter, receiver, done);
+  }
+
+  @Override
+  public CommunicatorResult sendToReceivers(Object parameter, Collection<? extends IPacketReceiver> receivers, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.sendToReceivers(parameter, receivers, done);
+  }
+
+  @Override
+  public CommunicatorResult sendToViewer(Object parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.sendToViewer(parameter, viewer, done);
+  }
+
+  @Override
+  public CommunicatorResult sendToViewers(Object parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.sendToViewers(parameter, viewers, done);
+  }
+
+  @Override
+  public CommunicatorResult sendToPlayer(Object parameter, Player player, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.sendToPlayer(parameter, player, done);
+  }
+
+  @Override
+  public CommunicatorResult sendToPlayers(Object parameter, Collection<? extends Player> players, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.sendToPlayers(parameter, players, done);
+  }
+
+  @Override
+  public CommunicatorResult receiveFromReceiver(Object parameter, IPacketReceiver receiver, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.receiveFromReceiver(parameter, receiver, done);
+  }
+
+  @Override
+  public CommunicatorResult receiveFromReceivers(Object parameter, Collection<? extends IPacketReceiver> receivers, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.receiveFromReceivers(parameter, receivers, done);
+  }
+
+  @Override
+  public CommunicatorResult receiveFromViewer(Object parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.receiveFromViewer(parameter, viewer, done);
+  }
+
+  @Override
+  public CommunicatorResult receiveFromViewers(Object parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.receiveFromViewers(parameter, viewers, done);
+  }
+
+  @Override
+  public CommunicatorResult receiveFromPlayer(Object parameter, Player player, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.receiveFromPlayer(parameter, player, done);
+  }
+
+  @Override
+  public CommunicatorResult receiveFromPlayers(Object parameter, Collection<? extends Player> players, @Nullable Runnable done) {
+    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+
+    if (communicator == null)
+      return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
+
+    return communicator.receiveFromPlayers(parameter, players, done);
   }
 }
