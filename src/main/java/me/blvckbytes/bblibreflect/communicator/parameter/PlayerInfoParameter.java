@@ -35,7 +35,7 @@ import java.util.List;
 */
 @Setter
 @Getter
-public class PlayerInfoParameter {
+public class PlayerInfoParameter implements ICommunicatorParameter {
 
   @Setter
   @Getter

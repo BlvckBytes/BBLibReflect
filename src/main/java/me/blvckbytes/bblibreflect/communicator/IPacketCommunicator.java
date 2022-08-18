@@ -2,6 +2,7 @@ package me.blvckbytes.bblibreflect.communicator;
 
 import me.blvckbytes.bblibreflect.ICustomizableViewer;
 import me.blvckbytes.bblibreflect.IPacketReceiver;
+import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +27,7 @@ import java.util.Collection;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface IPacketCommunicator<T> {
+public interface IPacketCommunicator<T extends ICommunicatorParameter> {
 
   //=========================================================================//
   //                                 Sending                                 //

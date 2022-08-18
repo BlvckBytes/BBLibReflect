@@ -8,6 +8,7 @@ import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
 import me.blvckbytes.bblibreflect.communicator.APacketCommunicator;
 import me.blvckbytes.bblibreflect.communicator.CommunicatorResult;
+import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
 import me.blvckbytes.bblibreflect.handle.Assignability;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
@@ -69,7 +70,7 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   private final Map<UUID, ICustomizableViewer> viewers;
 
   // Mapping communicator parameter types to their managing communicator
-  private final Map<Class<?>, APacketCommunicator<Object>> communicators;
+  private final Map<Class<?>, APacketCommunicator<ICommunicatorParameter>> communicators;
 
   // Mapping players to their last known client version (used for reloads)
   private Map<UUID, Integer> clientVersions;
@@ -618,13 +619,13 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
   @Override
   @SuppressWarnings("unchecked")
-  public void registerCommunicator(APacketCommunicator<?> communicator) {
-    communicators.put(communicator.getParameterType(), (APacketCommunicator<Object>) communicator);
+  public void registerCommunicator(APacketCommunicator<? extends ICommunicatorParameter> communicator) {
+    communicators.put(communicator.getParameterType(), (APacketCommunicator<ICommunicatorParameter>) communicator);
   }
 
   @Override
-  public CommunicatorResult sendToReceiver(Object parameter, IPacketReceiver receiver, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult sendToReceiver(ICommunicatorParameter parameter, IPacketReceiver receiver, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -633,8 +634,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult sendToReceivers(Object parameter, Collection<? extends IPacketReceiver> receivers, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult sendToReceivers(ICommunicatorParameter parameter, Collection<? extends IPacketReceiver> receivers, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -643,8 +644,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult sendToViewer(Object parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult sendToViewer(ICommunicatorParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -653,8 +654,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult sendToViewers(Object parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult sendToViewers(ICommunicatorParameter parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -663,8 +664,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult sendToPlayer(Object parameter, Player player, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult sendToPlayer(ICommunicatorParameter parameter, Player player, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -673,8 +674,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult sendToPlayers(Object parameter, Collection<? extends Player> players, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult sendToPlayers(ICommunicatorParameter parameter, Collection<? extends Player> players, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -683,8 +684,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult receiveFromReceiver(Object parameter, IPacketReceiver receiver, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult receiveFromReceiver(ICommunicatorParameter parameter, IPacketReceiver receiver, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -693,8 +694,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult receiveFromReceivers(Object parameter, Collection<? extends IPacketReceiver> receivers, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult receiveFromReceivers(ICommunicatorParameter parameter, Collection<? extends IPacketReceiver> receivers, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -703,8 +704,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult receiveFromViewer(Object parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult receiveFromViewer(ICommunicatorParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -713,8 +714,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult receiveFromViewers(Object parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult receiveFromViewers(ICommunicatorParameter parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -723,8 +724,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult receiveFromPlayer(Object parameter, Player player, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult receiveFromPlayer(ICommunicatorParameter parameter, Player player, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;
@@ -733,8 +734,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
   }
 
   @Override
-  public CommunicatorResult receiveFromPlayers(Object parameter, Collection<? extends Player> players, @Nullable Runnable done) {
-    APacketCommunicator<Object> communicator = communicators.get(parameter.getClass());
+  public CommunicatorResult receiveFromPlayers(ICommunicatorParameter parameter, Collection<? extends Player> players, @Nullable Runnable done) {
+    APacketCommunicator<ICommunicatorParameter> communicator = communicators.get(parameter.getClass());
 
     if (communicator == null)
       return CommunicatorResult.UNKNOWN_PARAMETER_TYPE;

@@ -1,5 +1,7 @@
 package me.blvckbytes.bblibreflect.communicator;
 
+import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
+
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
   Created On: 08/17/2022
@@ -22,13 +24,13 @@ package me.blvckbytes.bblibreflect.communicator;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface IPacketCommunicatorRegistry extends IPacketCommunicator<Object> {
+public interface IPacketCommunicatorRegistry extends IPacketCommunicator<ICommunicatorParameter> {
 
   /**
    * Register a new available packet communicator which the
    * registry can route it's requests to
    * @param communicator Communicator to register
    */
-  void registerCommunicator(APacketCommunicator<?> communicator);
+  void registerCommunicator(APacketCommunicator<? extends ICommunicatorParameter> communicator);
 
 }

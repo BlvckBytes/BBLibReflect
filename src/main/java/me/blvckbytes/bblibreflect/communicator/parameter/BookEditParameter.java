@@ -31,7 +31,7 @@ import java.util.function.Consumer;
 @Getter
 @Setter
 @AllArgsConstructor
-public class BookEditParameter {
+public class BookEditParameter implements ICommunicatorParameter {
 
   // Target player
   private Player player;

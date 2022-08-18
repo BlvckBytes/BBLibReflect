@@ -3,6 +3,7 @@ package me.blvckbytes.bblibreflect.communicator;
 import me.blvckbytes.bblibreflect.IPacketInterceptor;
 import me.blvckbytes.bblibreflect.IPacketReceiver;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
+import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
 import me.blvckbytes.bblibutil.UnsafeBiConsumer;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.jetbrains.annotations.Nullable;
@@ -29,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public abstract class APacketCommunicator<T> implements IPacketCommunicator<T> {
+public abstract class APacketCommunicator<T extends ICommunicatorParameter> implements IPacketCommunicator<T> {
 
   protected final ILogger logger;
   protected final IReflectionHelper helper;

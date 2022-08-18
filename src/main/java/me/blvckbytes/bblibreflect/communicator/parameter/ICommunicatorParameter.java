@@ -1,16 +1,10 @@
 package me.blvckbytes.bblibreflect.communicator.parameter;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
-import me.blvckbytes.bblibutil.component.IComponent;
-
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/16/2022
+  Created On: 08/19/2022
 
-  A parameter used to define which title and subtitle to display with
-  what timings when using the TitleCommunicator.
+  The base of all parameters passed to packet communicator implementations.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -25,24 +19,4 @@ import me.blvckbytes.bblibutil.component.IComponent;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-@Setter
-@Getter
-@AllArgsConstructor
-public class TitleParameter implements ICommunicatorParameter {
-
-  // Title to display on top
-  private IComponent title;
-
-  // Subtitle to display below
-  private IComponent subtitle;
-
-  // Time in ticks to take while fading the title in
-  private int fadeIn;
-
-  // Time in ticks to display the title
-  private int duration;
-
-  // Time in ticks to take while fading the title out
-  private int fadeOut;
-
-}
+public interface ICommunicatorParameter {}

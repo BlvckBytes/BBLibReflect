@@ -19,7 +19,7 @@ package me.blvckbytes.bblibreflect.communicator.parameter;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public enum PlayerInfoAction {
+public enum PlayerInfoAction implements ICommunicatorParameter {
 
   // Add a player to the tab list
   ADD_PLAYER,

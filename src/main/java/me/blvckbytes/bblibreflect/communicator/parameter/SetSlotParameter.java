@@ -29,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 @Setter
 @Getter
 @AllArgsConstructor
-public class SetSlotParameter {
+public class SetSlotParameter implements ICommunicatorParameter {
 
   // Item to set
   private @Nullable ItemStack item;

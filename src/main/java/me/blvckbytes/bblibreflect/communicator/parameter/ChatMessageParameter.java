@@ -29,7 +29,7 @@ import me.blvckbytes.bblibutil.component.IComponent;
 @Getter
 @Setter
 @AllArgsConstructor
-public class ChatMessageParameter {
+public class ChatMessageParameter implements ICommunicatorParameter {
 
   // Json message to be serialized
   IComponent message;

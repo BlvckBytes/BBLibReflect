@@ -1,6 +1,7 @@
 package me.blvckbytes.bblibreflect;
 
 import me.blvckbytes.bblibreflect.communicator.IPacketCommunicatorRegistry;
+import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
