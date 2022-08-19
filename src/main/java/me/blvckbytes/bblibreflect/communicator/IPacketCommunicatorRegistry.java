@@ -24,13 +24,13 @@ import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface IPacketCommunicatorRegistry extends IPacketCommunicator<ICommunicatorParameter> {
+public interface IPacketCommunicatorRegistry extends IPacketOutCommunicator<ICommunicatorParameter>, IPacketInCommunicator<ICommunicatorParameter> {
 
   /**
    * Register a new available packet communicator which the
    * registry can route it's requests to
    * @param communicator Communicator to register
    */
-  void registerCommunicator(APacketCommunicator<? extends ICommunicatorParameter> communicator);
+  void registerCommunicator(IPacketCommunicator<? extends ICommunicatorParameter> communicator);
 
 }

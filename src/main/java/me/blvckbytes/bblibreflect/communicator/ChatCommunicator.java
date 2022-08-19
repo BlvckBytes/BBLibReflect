@@ -11,6 +11,7 @@ import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.EnumHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
@@ -72,6 +73,12 @@ public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> 
   @Override
   protected void personalizeBasePacket(Object packet, ChatMessageParameter parameter, ICustomizableViewer viewer) throws Exception {
     F_PO_CHAT__BASE_COMPONENT.set(packet, componentToBaseComponent(parameter.getMessage(), viewer));
+  }
+
+  @Override
+  public @Nullable ChatMessageParameter parseOutgoing(Object packet) {
+    // TODO: Implement
+    throw new UnsupportedOperationException();
   }
 
   @Override

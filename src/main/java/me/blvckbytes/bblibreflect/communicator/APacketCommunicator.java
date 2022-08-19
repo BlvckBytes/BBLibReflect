@@ -2,7 +2,6 @@ package me.blvckbytes.bblibreflect.communicator;
 
 import com.google.gson.JsonElement;
 import com.mojang.authlib.GameProfile;
-import lombok.AccessLevel;
 import lombok.Getter;
 import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
@@ -41,7 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public abstract class APacketCommunicator<T extends ICommunicatorParameter> implements IPacketCommunicator<T> {
+public abstract class APacketCommunicator<T extends ICommunicatorParameter> implements IPacketOutCommunicator<T> {
 
   protected final ILogger logger;
   protected final IReflectionHelper helper;
@@ -50,8 +49,8 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
   protected final MethodHandle M_CHAT_SERIALIZER__FROM_JSON, M_CRAFT_ITEM_STACK__AS_NMS_COPY, M_CRAFT_PLAYER__GET_PROFILE ;
   protected final ClassHandle C_CHAT_SERIALIZER, C_BASE_COMPONENT, C_CRAFT_ITEM_STACK, C_ITEM_STACK, C_CRAFT_PLAYER;
 
-  @Getter(AccessLevel.PROTECTED)
-  private final ClassHandle packetClass;
+  @Getter
+  private final ClassHandle packetType;
 
   private final boolean requiresViewer;
 
@@ -60,9 +59,9 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
     IReflectionHelper helper,
     IPacketInterceptor interceptor,
     boolean requiresViewer,
-    UnsafeSupplier<ClassHandle> packetClass
+    UnsafeSupplier<ClassHandle> packetType
   ) throws Exception {
-    this(logger, helper, interceptor, requiresViewer, packetClass.get());
+    this(logger, helper, interceptor, requiresViewer, packetType.get());
   }
 
   public APacketCommunicator(
@@ -70,13 +69,13 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
     IReflectionHelper helper,
     IPacketInterceptor interceptor,
     boolean requiresViewer,
-    ClassHandle packetClass
+    ClassHandle packetType
   ) throws Exception {
     this.logger = logger;
     this.helper = helper;
     this.interceptor = interceptor;
     this.requiresViewer = requiresViewer;
-    this.packetClass = packetClass;
+    this.packetType = packetType;
 
     C_CHAT_SERIALIZER  = helper.getClass(RClass.CHAT_SERIALIZER);
     C_BASE_COMPONENT   = helper.getClass(RClass.I_CHAT_BASE_COMPONENT);
@@ -100,17 +99,12 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
       .withReturnType(GameProfile.class)
       .required();
 
-    interceptor.registerCommunicator(this);
+    interceptor.getPacketCommunicatorRegistry().registerCommunicator(this);
   }
 
   //=========================================================================//
   //                         Required Implementations                        //
   //=========================================================================//
-
-  /**
-   * Get the type of parameter this communicator accepts
-   */
-  public abstract Class<T> getParameterType();
 
   /**
    * Create a new zeroed out base packet
@@ -140,7 +134,7 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
    * @return Packet instance ready to use
    */
   protected Object createPacket() throws Exception {
-    return helper.createEmptyPacket(packetClass);
+    return helper.createEmptyPacket(packetType);
   }
 
   /**

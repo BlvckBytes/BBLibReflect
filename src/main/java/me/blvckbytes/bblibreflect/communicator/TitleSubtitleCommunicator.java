@@ -6,6 +6,7 @@ import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.TitleSubtitleParameter;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.jetbrains.annotations.Nullable;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -39,12 +40,12 @@ public class TitleSubtitleCommunicator extends ATitleBaseCommunicator<TitleSubti
     super(logger, helper, interceptor, RClass.CLIENTBOUND_SUBTITLE_SET);
 
     if (isNewer) {
-      F_CLB_SUBTITLE__BASE_COMPONENT = getPacketClass().locateField().withType(C_BASE_COMPONENT).required();
+      F_CLB_SUBTITLE__BASE_COMPONENT = getPacketType().locateField().withType(C_BASE_COMPONENT).required();
       F_PO_SUBTITLE__BASE_COMPONENT  = null;
     }
 
     else {
-      F_PO_SUBTITLE__BASE_COMPONENT  = getPacketClass().locateField().withType(C_BASE_COMPONENT).withSkip(1).required();
+      F_PO_SUBTITLE__BASE_COMPONENT  = getPacketType().locateField().withType(C_BASE_COMPONENT).withSkip(1).required();
       F_CLB_SUBTITLE__BASE_COMPONENT = null;
     }
   }
@@ -63,5 +64,11 @@ public class TitleSubtitleCommunicator extends ATitleBaseCommunicator<TitleSubti
   @Override
   public Class<TitleSubtitleParameter> getParameterType() {
     return TitleSubtitleParameter.class;
+  }
+
+  @Override
+  public @Nullable TitleSubtitleParameter parseOutgoing(Object packet) {
+    // TODO: Implement
+    throw new UnsupportedOperationException();
   }
 }

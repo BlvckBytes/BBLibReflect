@@ -9,6 +9,7 @@ import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.TitleTimingsParameter;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.jetbrains.annotations.Nullable;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -43,9 +44,9 @@ public class TitleTimingsCommunicator extends ATitleBaseCommunicator<TitleTiming
     super(logger, helper, interceptor, RClass.CLIENTBOUND_TITLES_ANIMATION);
 
     if (isNewer) {
-      F_CLB_ANIMATION__FADE_IN  = getPacketClass().locateField().withType(int.class).required();
-      F_CLB_ANIMATION__DURATION = getPacketClass().locateField().withType(int.class).withSkip(1).required();
-      F_CLB_ANIMATION__FADE_OUT = getPacketClass().locateField().withType(int.class).withSkip(2).required();
+      F_CLB_ANIMATION__FADE_IN  = getPacketType().locateField().withType(int.class).required();
+      F_CLB_ANIMATION__DURATION = getPacketType().locateField().withType(int.class).withSkip(1).required();
+      F_CLB_ANIMATION__FADE_OUT = getPacketType().locateField().withType(int.class).withSkip(2).required();
 
       F_PO_TITLE__FADE_IN  = null;
       F_PO_TITLE__DURATION = null;
@@ -53,9 +54,9 @@ public class TitleTimingsCommunicator extends ATitleBaseCommunicator<TitleTiming
     }
 
     else {
-      F_PO_TITLE__FADE_IN  = getPacketClass().locateField().withType(int.class).required();
-      F_PO_TITLE__DURATION = getPacketClass().locateField().withType(int.class).required();
-      F_PO_TITLE__FADE_OUT = getPacketClass().locateField().withType(int.class).required();
+      F_PO_TITLE__FADE_IN  = getPacketType().locateField().withType(int.class).required();
+      F_PO_TITLE__DURATION = getPacketType().locateField().withType(int.class).required();
+      F_PO_TITLE__FADE_OUT = getPacketType().locateField().withType(int.class).required();
 
       F_CLB_ANIMATION__FADE_IN  = null;
       F_CLB_ANIMATION__DURATION = null;
@@ -90,5 +91,11 @@ public class TitleTimingsCommunicator extends ATitleBaseCommunicator<TitleTiming
   @Override
   public Class<TitleTimingsParameter> getParameterType() {
     return TitleTimingsParameter.class;
+  }
+
+  @Override
+  public @Nullable TitleTimingsParameter parseOutgoing(Object packet) {
+    // TODO: Implement
+    throw new UnsupportedOperationException();
   }
 }

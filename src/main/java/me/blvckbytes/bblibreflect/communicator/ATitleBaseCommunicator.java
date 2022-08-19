@@ -55,7 +55,7 @@ public abstract class ATitleBaseCommunicator<T extends ICommunicatorParameter> e
       F_PO_TITLE__ENUM_TITLE_ACTION = null;
     } else {
       E_ENUM_TITLE_ACTION           = helper.getClass(RClass.ENUM_TITLE_ACTION).asEnum();
-      F_PO_TITLE__ENUM_TITLE_ACTION = getPacketClass().locateField().withType(E_ENUM_TITLE_ACTION).required();
+      F_PO_TITLE__ENUM_TITLE_ACTION = getPacketType().locateField().withType(E_ENUM_TITLE_ACTION).required();
     }
   }
 

@@ -1,7 +1,6 @@
 package me.blvckbytes.bblibreflect;
 
 import me.blvckbytes.bblibreflect.communicator.IPacketCommunicatorRegistry;
-import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
@@ -25,7 +24,7 @@ import java.util.UUID;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public interface IPacketInterceptor extends IPacketCommunicatorRegistry {
+public interface IPacketInterceptor {
 
   /**
    * Register a new modifier for all players
@@ -76,5 +75,10 @@ public interface IPacketInterceptor extends IPacketCommunicatorRegistry {
    * @return ICustomizableViewer instance
    */
   ICustomizableViewer getPlayerAsViewer(Player p);
+
+  /**
+   * Get a reference to the central packet communicator registry
+   */
+  IPacketCommunicatorRegistry getPacketCommunicatorRegistry();
 
 }

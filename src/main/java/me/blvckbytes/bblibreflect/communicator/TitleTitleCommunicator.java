@@ -9,6 +9,7 @@ import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.TitleTitleParameter;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.jetbrains.annotations.Nullable;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -42,12 +43,12 @@ public class TitleTitleCommunicator extends ATitleBaseCommunicator<TitleTitlePar
     super(logger, helper, interceptor, RClass.CLIENTBOUND_TITLE_SET);
 
     if (isNewer) {
-      F_CLB_TITLE__BASE_COMPONENT = getPacketClass().locateField().withType(C_BASE_COMPONENT).required();
+      F_CLB_TITLE__BASE_COMPONENT = getPacketType().locateField().withType(C_BASE_COMPONENT).required();
       F_PO_TITLE__BASE_COMPONENT  = null;
     }
 
     else {
-      F_PO_TITLE__BASE_COMPONENT  = getPacketClass().locateField().withType(C_BASE_COMPONENT).required();
+      F_PO_TITLE__BASE_COMPONENT  = getPacketType().locateField().withType(C_BASE_COMPONENT).required();
       F_CLB_TITLE__BASE_COMPONENT = null;
     }
   }
@@ -66,5 +67,11 @@ public class TitleTitleCommunicator extends ATitleBaseCommunicator<TitleTitlePar
   @Override
   public Class<TitleTitleParameter> getParameterType() {
     return TitleTitleParameter.class;
+  }
+
+  @Override
+  public @Nullable TitleTitleParameter parseOutgoing(Object packet) {
+    // TODO: Implement
+    throw new UnsupportedOperationException();
   }
 }

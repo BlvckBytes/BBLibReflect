@@ -14,6 +14,7 @@ import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
 import me.blvckbytes.bblibreflect.handle.EnumHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,8 +62,8 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
     E_ENUM_PLAYER_INFO_ACTION = helper.getClass(RClass.ENUM_PLAYER_INFO_ACTION).asEnum();
     E_ENUM_GAME_MODE          = helper.getClass(RClass.ENUM_GAME_MODE).asEnum();
 
-    F_PO_PLAYER_INFO__ENUM = getPacketClass().locateField().withType(E_ENUM_PLAYER_INFO_ACTION).required();
-    F_PO_PLAYER_INFO__LIST = getPacketClass().locateField().withType(List.class).withGeneric(C_PLAYER_INFO_DATA).required();
+    F_PO_PLAYER_INFO__ENUM = getPacketType().locateField().withType(E_ENUM_PLAYER_INFO_ACTION).required();
+    F_PO_PLAYER_INFO__LIST = getPacketType().locateField().withType(List.class).withGeneric(C_PLAYER_INFO_DATA).required();
     F_PLAYER_INFO_DATA__COMPONENT = C_PLAYER_INFO_DATA.locateField().withType(C_BASE_COMPONENT).required();
 
     CT_PLAYER_INFO_DATA = C_PLAYER_INFO_DATA.locateConstructor().withParameters(GameProfile.class, int.class).withParameters(C_ENUM_GAME_MODE, C_BASE_COMPONENT).required();
@@ -136,5 +137,11 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
       E_ENUM_GAME_MODE.getByCopy(entry.resolveGameMode()),
       null
     );
+  }
+
+  @Override
+  public @Nullable PlayerInfoParameter parseOutgoing(Object packet) {
+    // TODO: Implement
+    throw new UnsupportedOperationException();
   }
 }

@@ -46,10 +46,10 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
   ) throws Exception {
     super(logger, helper, interceptor, true, helper.getClass(RClass.PACKET_O_SET_SLOT));
 
-    F_PO_SS__WINDOW_ID        = getPacketClass().locateField().withType(int.class).required();
-    F_PO_SS__STATE_ID_OR_SLOT = getPacketClass().locateField().withType(int.class).withSkip(1).required();
-    F_POSS__SLOT              = getPacketClass().locateField().withType(int.class).withSkip(2).optional();
-    F_PO_SS__ITEM             = getPacketClass().locateField().withType(C_ITEM_STACK).required();
+    F_PO_SS__WINDOW_ID        = getPacketType().locateField().withType(int.class).required();
+    F_PO_SS__STATE_ID_OR_SLOT = getPacketType().locateField().withType(int.class).withSkip(1).required();
+    F_POSS__SLOT              = getPacketType().locateField().withType(int.class).withSkip(2).optional();
+    F_PO_SS__ITEM             = getPacketType().locateField().withType(C_ITEM_STACK).required();
   }
 
   @Override
@@ -97,5 +97,11 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
     // Set the item as an NMS copy
     Object craftStack = M_CRAFT_ITEM_STACK__AS_NMS_COPY.invoke(null, item);
     F_PO_SS__ITEM.set(packet, craftStack);
+  }
+
+  @Override
+  public @Nullable SetSlotParameter parseOutgoing(Object packet) {
+    // TODO: Implement
+    throw new UnsupportedOperationException();
   }
 }
