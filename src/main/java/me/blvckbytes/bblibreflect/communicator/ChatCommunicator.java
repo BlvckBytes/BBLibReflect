@@ -35,7 +35,7 @@ import java.util.UUID;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> {
+public class ChatCommunicator extends APacketOutCommunicator<ChatMessageParameter> {
 
   private final ClassHandle C_PO_CHAT;
   private final EnumHandle E_CHAT_MESSAGE_TYPE;

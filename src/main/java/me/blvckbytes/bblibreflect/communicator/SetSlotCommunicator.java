@@ -34,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
+public class SetSlotCommunicator extends APacketOutCommunicator<SetSlotParameter> {
 
   private final FieldHandle F_PO_SS__WINDOW_ID, F_PO_SS__STATE_ID_OR_SLOT, F_PO_SS__ITEM;
   private final @Nullable FieldHandle F_POSS__SLOT;

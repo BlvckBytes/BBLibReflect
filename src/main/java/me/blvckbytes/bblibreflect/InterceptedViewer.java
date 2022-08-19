@@ -83,6 +83,12 @@ public class InterceptedViewer implements ICustomizableViewer {
   }
 
   @Override
+  public void receivePacket(Object packet, @Nullable Runnable received) {
+    // TODO: Implement
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public boolean cannotRenderHexColors() {
     // 721: 1.16-pre1, should be the first to support HEX
     return clientVersion < 721;

@@ -3,20 +3,18 @@ package me.blvckbytes.bblibreflect.communicator;
 import com.google.gson.JsonElement;
 import com.mojang.authlib.GameProfile;
 import lombok.Getter;
-import me.blvckbytes.bblibreflect.*;
+import me.blvckbytes.bblibreflect.ICustomizableViewer;
+import me.blvckbytes.bblibreflect.IPacketInterceptor;
+import me.blvckbytes.bblibreflect.IReflectionHelper;
+import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
 import me.blvckbytes.bblibreflect.handle.Assignability;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.MethodHandle;
-import me.blvckbytes.bblibutil.UnsafeBiConsumer;
 import me.blvckbytes.bblibutil.UnsafeSupplier;
 import me.blvckbytes.bblibutil.component.IComponent;
 import me.blvckbytes.bblibutil.logger.ILogger;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Collection;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -40,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public abstract class APacketCommunicator<T extends ICommunicatorParameter> implements IPacketOutCommunicator<T> {
+public abstract class APacketCommunicator<T extends ICommunicatorParameter> {
 
   protected final ILogger logger;
   protected final IReflectionHelper helper;
@@ -52,6 +50,7 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
   @Getter
   private final ClassHandle packetType;
 
+  @Getter
   private final boolean requiresViewer;
 
   public APacketCommunicator(
@@ -98,8 +97,6 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
       .withName("getProfile")
       .withReturnType(GameProfile.class)
       .required();
-
-    interceptor.getPacketCommunicatorRegistry().registerCommunicator(this);
   }
 
   //=========================================================================//
@@ -147,207 +144,6 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> impl
    */
   public Object componentToBaseComponent(IComponent component, @Nullable ICustomizableViewer viewer) throws Exception {
     return M_CHAT_SERIALIZER__FROM_JSON.invoke(null, component.toJson(viewer == null || viewer.cannotRenderHexColors()));
-  }
-
-  /**
-   * Sends multiple packets to a given receiver and, if required, synchronizes
-   * their completion callback to only invoke the provided callback after all packets completed
-   * @param receiver Target receiver to send to
-   * @param done Optional callback, called when all packets are done
-   * @param packets Packets to send
-   */
-  protected void sendPacketsToReceiver(IPacketReceiver receiver, @Nullable Runnable done, Object... packets) {
-    // No callback required, just perform a sending invocation
-    if (done == null) {
-      for (Object packet : packets)
-        receiver.sendPacket(packet, null);
-      return;
-    }
-
-    AtomicInteger completionCount = new AtomicInteger(0);
-
-    for (Object packet : packets) {
-      receiver.sendPacket(packet, () -> {
-        // Check if it's the last packet that completed, if so, call the callback
-        if (completionCount.incrementAndGet() == packets.length)
-          done.run();
-      });
-    }
-  }
-
-  /**
-   * Sends multiple packets to each of a collection of multiple receivers and, if required,
-   * synchronizes the completion callback of each receiver's iteration to only call the provided
-   * callback after all iterations themselves completed
-   * @param receivers Collection of target receivers to send to
-   * @param done Optional callback, called when all packets are done
-   * @param sendingRoutine Routine used to tend out packets to a single receiver of the
-   *                       collection, taking the receiver and a completion callback
-   */
-  protected<R> void sendPacketsToReceivers(Collection<R> receivers, @Nullable Runnable done, UnsafeBiConsumer<R, @Nullable Runnable> sendingRoutine) throws Exception {
-    // No callback required, just perform an iteration invocation
-    if (done == null) {
-      for (R receiver : receivers)
-        sendingRoutine.accept(receiver, null);
-      return;
-    }
-
-    AtomicInteger completionCount = new AtomicInteger(0);
-
-    for (R receiver : receivers) {
-      // Check if it's the last iteration that completed, if so, call the callback
-      sendingRoutine.accept(receiver, () -> {
-        if (completionCount.incrementAndGet() == receivers.size())
-          done.run();
-      });
-    }
-  }
-
-  //=========================================================================//
-  //                       IPacketCommunicator Sending                       //
-  //=========================================================================//
-
-  /**
-   * Send a new packet to a packet receiver
-   * @param parameter Parameter to construct the packet from
-   * @param receiver Receiver of the packet
-   * @param done Optional completion callback
-   * @return Result of the operation
-   */
-  @Override
-  public CommunicatorResult sendToReceiver(T parameter, IPacketReceiver receiver, @Nullable Runnable done) {
-    if (requiresViewer)
-      return CommunicatorResult.VIEWER_REQUIRED;
-
-    try {
-      Object packet = createBasePacket(parameter);
-
-      sendPacketsToReceiver(receiver, done, packet);
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  /**
-   * Send a new packet to multiple packet receivers
-   * @param parameter Parameter to construct the packet from
-   * @param receivers Receivers of the packet
-   * @param done Optional completion callback
-   * @return Result of the operation
-   */
-  @Override
-  public CommunicatorResult sendToReceivers(T parameter, Collection<? extends IPacketReceiver> receivers, @Nullable Runnable done) {
-    if (requiresViewer)
-      return CommunicatorResult.VIEWER_REQUIRED;
-
-    try {
-      Object packet = createBasePacket(parameter);
-
-      sendPacketsToReceivers(receivers, done, (receiver, subDone) -> {
-        sendPacketsToReceiver(receiver, subDone, packet);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  /**
-   * Send a new packet to a customizable viewer
-   * @param parameter Parameter to construct the packet from
-   * @param viewer Receiver of the packet
-   * @param done Optional completion callback
-   * @return Result of the operation
-   */
-  @Override
-  public CommunicatorResult sendToViewer(T parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
-    try {
-      Object packet = createBasePacket(parameter);
-
-      try {
-        personalizeBasePacket(packet, parameter, viewer);
-      } catch (UnsupportedOperationException ignored) {}
-
-      sendPacketsToReceiver(viewer, done, packet);
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  /**
-   * Send a new packet to multiple customizable viewers
-   * @param parameter Parameter to construct the packet from
-   * @param viewers Receivers of the packet
-   * @param done Optional completion callback
-   * @return Result of the operation
-   */
-  @Override
-  public CommunicatorResult sendToViewers(T parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
-    try {
-      Object packet = createBasePacket(parameter);
-
-      sendPacketsToReceivers(viewers, done, (viewer, subDone) -> {
-        try {
-          personalizeBasePacket(packet, parameter, viewer);
-        } catch (UnsupportedOperationException ignored) {}
-
-        sendPacketsToReceiver(viewer, subDone, packet);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  /**
-   * Send a new packet to a player
-   * @param parameter Parameter to construct the packet from
-   * @param player Receiver of the packet
-   * @param done Optional completion callback
-   * @return Result of the operation
-   */
-  @Override
-  public CommunicatorResult sendToPlayer(T parameter, Player player, @Nullable Runnable done) {
-    return sendToViewer(parameter, interceptor.getPlayerAsViewer(player), done);
-  }
-
-  /**
-   * Send a new packet to multiple players
-   * @param parameter Parameter to construct the packet from
-   * @param players Receivers of the packet
-   * @param done Optional completion callback
-   * @return Result of the operation
-   */
-  @Override
-  public CommunicatorResult sendToPlayers(T parameter, Collection<? extends Player> players, @Nullable Runnable done) {
-    try {
-      Object packet = createBasePacket(parameter);
-
-      sendPacketsToReceivers(players, done, (player, subDone) -> {
-        ICustomizableViewer viewer = interceptor.getPlayerAsViewer(player);
-
-        try {
-          personalizeBasePacket(packet, parameter, viewer);
-        } catch (UnsupportedOperationException ignored) {}
-
-        sendPacketsToReceiver(viewer, subDone, packet);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
   }
 }
 

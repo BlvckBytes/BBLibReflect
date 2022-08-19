@@ -29,7 +29,7 @@ import me.blvckbytes.bblibutil.logger.ILogger;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-public abstract class ATitleBaseCommunicator<T extends ICommunicatorParameter> extends APacketCommunicator<T> {
+public abstract class ATitleBaseCommunicator<T extends ICommunicatorParameter> extends APacketOutCommunicator<T> {
 
   private final EnumHandle E_ENUM_TITLE_ACTION;
   private final FieldHandle F_PO_TITLE__ENUM_TITLE_ACTION;

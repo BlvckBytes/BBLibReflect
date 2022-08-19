@@ -40,7 +40,7 @@ import java.util.List;
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 @AutoConstruct
-public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParameter> {
+public class PlayerInfoCommunicator extends APacketOutCommunicator<PlayerInfoParameter> {
 
   private final EnumHandle E_ENUM_PLAYER_INFO_ACTION, E_ENUM_GAME_MODE;
 

@@ -103,6 +103,8 @@ public interface IPacketInCommunicator<T extends ICommunicatorParameter> extends
    */
   @Nullable T parseIncoming(Object packet);
 
+  // TODO: Think about a patch(Object, Parameter) method
+
   /**
    * Get the type of parameter this communicator accepts
    */

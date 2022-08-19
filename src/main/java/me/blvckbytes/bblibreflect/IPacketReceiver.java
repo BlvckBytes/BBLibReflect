@@ -35,6 +35,14 @@ public interface IPacketReceiver {
   void sendPacket(Object packet, @Nullable Runnable sent);
 
   /**
+   * Enqueues a new packet to be received from the receiver and calls
+   * the callback as soon as the packet has been processed
+   * @param packet Packet to receive
+   * @param received Optional completion callback
+   */
+  void receivePacket(Object packet, @Nullable Runnable received);
+
+  /**
    * If available, this retrieves the receiver's UUID
    */
   @Nullable UUID getUuid();
