@@ -108,6 +108,11 @@ public class ClassHandle {
     return c.hashCode();
   }
 
+  @Override
+  public String toString() {
+    return c.toString();
+  }
+
   /**
    * Create a new class handle on top of a vanilla class
    * @param c Target class
