@@ -4,13 +4,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import me.blvckbytes.bblibdi.AutoConstruct;
-import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
 import me.blvckbytes.bblibreflect.handle.EnumHandle;
 import me.blvckbytes.bblibreflect.handle.MethodHandle;
 import me.blvckbytes.bblibutil.UnsafeSupplier;
-import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.jetbrains.annotations.Nullable;
@@ -51,7 +49,6 @@ public class ReflectionHelper implements IReflectionHelper {
 
   private final Map<ClassHandle, UnsafeSupplier<Object>> packetConstructors;
   private final Map<Material, Integer> burningTimes;
-  private final ILogger logger;
 
   private final ByteBuf byteBuf;
   private final Object packetDataSerializer;
@@ -61,11 +58,7 @@ public class ReflectionHelper implements IReflectionHelper {
   @Getter private final int[] versionNumbers;
   @Getter private final boolean refactored;
 
-  public ReflectionHelper(
-    @AutoInject ILogger logger
-  ) throws Exception {
-    this.logger = logger;
-
+  public ReflectionHelper() throws Exception {
     this.burningTimes = new HashMap<>();
     this.packetConstructors = new HashMap<>();
 
@@ -97,49 +90,44 @@ public class ReflectionHelper implements IReflectionHelper {
   }
 
   @Override
-  public Object createEmptyPacket(ClassHandle c) {
-    try {
-      UnsafeSupplier<Object> creator = packetConstructors.get(c);
+  public Object createEmptyPacket(ClassHandle c) throws Exception {
+    UnsafeSupplier<Object> creator = packetConstructors.get(c);
 
-      // Constructor not yet cached
-      if (creator == null) {
+    // Constructor not yet cached
+    if (creator == null) {
 
-        // Try to use the empty default constructor
-        ConstructorHandle empty = c.locateConstructor().optional();
+      // Try to use the empty default constructor
+      ConstructorHandle empty = c.locateConstructor().optional();
 
-        ConstructorHandle constructor = (
-          // That didn't yield anything, now require there to
-          // be a packet data serializer constructor
-          empty == null ?
-            c.locateConstructor().withParameters(C_PACKET_DATA_SERIALIZER).required() :
-            empty
-        );
+      ConstructorHandle constructor = (
+        // That didn't yield anything, now require there to
+        // be a packet data serializer constructor
+        empty == null ?
+          c.locateConstructor().withParameters(C_PACKET_DATA_SERIALIZER).required() :
+          empty
+      );
 
-        // Empty default constructor
-        if (constructor.getParameterCount() == 0)
-          creator = constructor::newInstance;
+      // Empty default constructor
+      if (constructor.getParameterCount() == 0)
+        creator = constructor::newInstance;
 
-        // Packet data serializer constructor
-        else {
-          creator = () -> {
-            // TODO: Think about a way to cache packet instances and re-use them (thread safe!)
-            synchronized (byteBuf) {
-              // Rewind the buffer and create a new zero-ed packet
-              byteBuf.setIndex(0, FAKE_BUF_SIZE);
-              return constructor.newInstance(packetDataSerializer);
-            }
-          };
-        }
-
-        // Store in cache
-        packetConstructors.put(c, creator);
+      // Packet data serializer constructor
+      else {
+        creator = () -> {
+          // TODO: Think about a way to cache packet instances and re-use them (thread safe!)
+          synchronized (byteBuf) {
+            // Rewind the buffer and create a new zero-ed packet
+            byteBuf.setIndex(0, FAKE_BUF_SIZE);
+            return constructor.newInstance(packetDataSerializer);
+          }
+        };
       }
 
-      return creator.get();
-    } catch (Exception e) {
-      logger.logError(e);
-      return null;
+      // Store in cache
+      packetConstructors.put(c, creator);
     }
+
+    return creator.get();
   }
 
   @Override

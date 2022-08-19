@@ -33,8 +33,9 @@ public interface IReflectionHelper {
    * Create a new empty packet instance of a specific class
    * @param c Class to create
    * @return Empty packet instance
+   * @throws Exception Internal reflection errors
    */
-  Object createEmptyPacket(ClassHandle c);
+  Object createEmptyPacket(ClassHandle c) throws Exception;
 
   /**
    * Load a known reflection required class by it's identifier
