@@ -173,6 +173,6 @@ public interface IPacketCommunicator<T extends ICommunicatorParameter> {
   //                                 Parsing                                 //
   //=========================================================================//
 
-  // TODO: Think about how to handle multi-packet parsing... (maybe don't have multi-packet communicators?)
+  // TODO: Design API
 
 }
