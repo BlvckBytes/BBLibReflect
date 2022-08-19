@@ -1,16 +1,18 @@
 package me.blvckbytes.bblibreflect.communicator;
 
-import com.google.gson.JsonElement;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
-import me.blvckbytes.bblibreflect.*;
+import me.blvckbytes.bblibreflect.ICustomizableViewer;
+import me.blvckbytes.bblibreflect.IPacketInterceptor;
+import me.blvckbytes.bblibreflect.IReflectionHelper;
+import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.ChatMessageParameter;
-import me.blvckbytes.bblibreflect.handle.*;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
+import me.blvckbytes.bblibreflect.handle.EnumHandle;
+import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
+import java.util.UUID;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -36,99 +38,44 @@ public class ChatCommunicator extends APacketCommunicator<ChatMessageParameter> 
 
   private final ClassHandle C_PO_CHAT;
   private final EnumHandle E_CHAT_MESSAGE_TYPE;
-  private final FieldHandle F_PO_CHAT__CHAT_MESSAGE_TYPE, F_PO_CHAT__BASE_COMPONENT;
-  private final MethodHandle M_CHAT_SERIALIZER__FROM_JSON;
+  private final FieldHandle F_PO_CHAT__CHAT_MESSAGE_TYPE, F_PO_CHAT__BASE_COMPONENT, F_PO_CHAT__UUID;
 
   public ChatCommunicator(
     @AutoInject ILogger logger,
     @AutoInject IReflectionHelper helper,
     @AutoInject IPacketInterceptor interceptor
   ) throws Exception {
-    super(logger, helper, interceptor);
+    super(logger, helper, interceptor, true, helper.getClass(RClass.PACKET_O_CHAT));
 
     ClassHandle C_BASE_COMPONENT    = helper.getClass(RClass.I_CHAT_BASE_COMPONENT);
-    ClassHandle C_CHAT_SERIALIZER   = helper.getClass(RClass.CHAT_SERIALIZER);
 
     C_PO_CHAT           = helper.getClass(RClass.PACKET_O_CHAT);
     E_CHAT_MESSAGE_TYPE = helper.getClass(RClass.CHAT_MESSAGE_TYPE).asEnum();
 
     F_PO_CHAT__CHAT_MESSAGE_TYPE = C_PO_CHAT.locateField().withType(E_CHAT_MESSAGE_TYPE).required();
     F_PO_CHAT__BASE_COMPONENT    = C_PO_CHAT.locateField().withType(C_BASE_COMPONENT).required();
-
-    M_CHAT_SERIALIZER__FROM_JSON = C_CHAT_SERIALIZER.locateMethod()
-      .withParameters(JsonElement.class)
-      .withReturnType(C_BASE_COMPONENT, false, Assignability.TYPE_TO_TARGET)
-      .withStatic(true).required();
+    F_PO_CHAT__UUID              = C_PO_CHAT.locateField().withType(UUID.class).optional();
   }
 
   @Override
-  public CommunicatorResult sendToViewer(ChatMessageParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
-    try {
-      Object packet = createPacket(parameter);
+  protected Object createBasePacket(ChatMessageParameter parameter) throws Exception {
+    Object packet = helper.createEmptyPacket(C_PO_CHAT);
 
-      F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getMessage().toJson(viewer.cannotRenderHexColors())));
+    F_PO_CHAT__CHAT_MESSAGE_TYPE.set(packet, E_CHAT_MESSAGE_TYPE.getByCopy(parameter.getType()));
 
-      viewer.sendPacket(packet, done);
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
+    if (F_PO_CHAT__UUID != null && parameter.getSender() != null)
+      F_PO_CHAT__UUID.set(packet, parameter.getSender());
+
+    return packet;
   }
 
   @Override
-  public CommunicatorResult sendToViewers(ChatMessageParameter parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
-    try {
-      Object packet = createPacket(parameter);
-
-      sendPacketsToReceivers(viewers, done, (viewer, subDone) -> {
-        F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getMessage().toJson(viewer.cannotRenderHexColors())));
-        viewer.sendPacket(packet, done);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  @Override
-  public CommunicatorResult sendToPlayer(ChatMessageParameter parameter, Player player, @Nullable Runnable done) {
-    return sendToViewer(parameter, interceptor.getPlayerAsViewer(player), done);
-  }
-
-  @Override
-  public CommunicatorResult sendToPlayers(ChatMessageParameter parameter, Collection<? extends Player> players, @Nullable Runnable done) {
-    try {
-      Object packet = createPacket(parameter);
-
-      sendPacketsToReceivers(players, done, (player, subDone) -> {
-        ICustomizableViewer viewer = interceptor.getPlayerAsViewer(player);
-        F_PO_CHAT__BASE_COMPONENT.set(packet, M_CHAT_SERIALIZER__FROM_JSON.invoke(null, parameter.getMessage().toJson(viewer.cannotRenderHexColors())));
-        viewer.sendPacket(packet, done);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
+  protected void personalizeBasePacket(Object packet, ChatMessageParameter parameter, ICustomizableViewer viewer) throws Exception {
+    F_PO_CHAT__BASE_COMPONENT.set(packet, componentToBaseComponent(parameter.getMessage(), viewer));
   }
 
   @Override
   public Class<ChatMessageParameter> getParameterType() {
     return ChatMessageParameter.class;
-  }
-
-  /**
-   * Create the packet base with only the chat message type set
-   * @param parameter Parameter to extract the type from
-   * @return Constructed packet
-   */
-  private Object createPacket(ChatMessageParameter parameter) throws Exception {
-    Object packet = helper.createEmptyPacket(C_PO_CHAT);
-    F_PO_CHAT__CHAT_MESSAGE_TYPE.set(packet, E_CHAT_MESSAGE_TYPE.getByOrdinal(parameter.isChat() ? 0 : 2));
-    return packet;
   }
 }

@@ -9,8 +9,7 @@ import me.blvckbytes.bblibutil.component.IComponent;
   Author: BlvckBytes <blvckbytes@gmail.com>
   Created On: 08/16/2022
 
-  A parameter used to define which title and subtitle to display with
-  what timings when using the TitleCommunicator.
+  A parameter used to define which title to display.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -28,21 +27,9 @@ import me.blvckbytes.bblibutil.component.IComponent;
 @Setter
 @Getter
 @AllArgsConstructor
-public class TitleParameter implements ICommunicatorParameter {
-
-  // Title to display on top
-  private IComponent title;
+public class TitleSubtitleParameter implements ICommunicatorParameter {
 
   // Subtitle to display below
   private IComponent subtitle;
-
-  // Time in ticks to take while fading the title in
-  private int fadeIn;
-
-  // Time in ticks to display the title
-  private int duration;
-
-  // Time in ticks to take while fading the title out
-  private int fadeOut;
 
 }

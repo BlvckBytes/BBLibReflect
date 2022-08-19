@@ -3,18 +3,12 @@ package me.blvckbytes.bblibreflect.communicator.parameter;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
-import me.blvckbytes.bblibreflect.ICustomizableViewer;
-import org.bukkit.inventory.ItemStack;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.function.Function;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/14/2022
+  Created On: 08/16/2022
 
-  A parameter used to define which slot to set to what item when using the
-  SetSlotCommunicator.
+  A parameter used to define with what timings to display titles and subtitles.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -32,18 +26,15 @@ import java.util.function.Function;
 @Setter
 @Getter
 @AllArgsConstructor
-public class SetSlotParameter implements ICommunicatorParameter {
+public class TitleTimingsParameter implements ICommunicatorParameter {
 
-  // Item to set
-  private @Nullable ItemStack item;
+  // Time in ticks to take while fading the title in
+  private int fadeIn;
 
-  // Personalized item to set, only invoked if non-null
-  private @Nullable Function<ICustomizableViewer, @Nullable ItemStack> personalizedItem;
+  // Time in ticks to display the title
+  private int duration;
 
-  // Slot to set to
-  private int slot;
-
-  // True means top inventory, false targets the bottom inventory
-  private boolean top;
+  // Time in ticks to take while fading the title out
+  private int fadeOut;
 
 }

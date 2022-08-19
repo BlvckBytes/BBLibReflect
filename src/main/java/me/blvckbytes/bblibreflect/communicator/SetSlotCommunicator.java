@@ -2,18 +2,16 @@ package me.blvckbytes.bblibreflect.communicator;
 
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
-import me.blvckbytes.bblibreflect.*;
+import me.blvckbytes.bblibreflect.ICustomizableViewer;
+import me.blvckbytes.bblibreflect.IPacketInterceptor;
+import me.blvckbytes.bblibreflect.IReflectionHelper;
+import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.SetSlotParameter;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
-import me.blvckbytes.bblibreflect.handle.MethodHandle;
-import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Collection;
 
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
@@ -39,80 +37,46 @@ import java.util.Collection;
 public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
 
   private final FieldHandle F_PO_SS__WINDOW_ID, F_PO_SS__STATE_ID_OR_SLOT, F_PO_SS__ITEM;
-  private final MethodHandle M_CIS__AS_NMS_COPY;
   private final @Nullable FieldHandle F_POSS__SLOT;
-  private final ClassHandle C_PO_SS;
 
   public SetSlotCommunicator(
     @AutoInject ILogger logger,
     @AutoInject IReflectionHelper helper,
     @AutoInject IPacketInterceptor interceptor
   ) throws Exception {
-    super(logger, helper, interceptor);
+    super(logger, helper, interceptor, true, helper.getClass(RClass.PACKET_O_SET_SLOT));
 
-    ClassHandle C_CIS  = helper.getClass(RClass.CRAFT_ITEM_STACK);
-    ClassHandle C_IS   = helper.getClass(RClass.ITEM_STACK);
-
-    C_PO_SS = helper.getClass(RClass.PACKET_O_SET_SLOT);
-
-    F_PO_SS__WINDOW_ID        = C_PO_SS.locateField().withType(int.class).required();
-    F_PO_SS__STATE_ID_OR_SLOT = C_PO_SS.locateField().withType(int.class).withSkip(1).required();
-    F_POSS__SLOT              = C_PO_SS.locateField().withType(int.class).withSkip(2).optional();
-    F_PO_SS__ITEM             = C_PO_SS.locateField().withType(C_IS).required();
-
-    M_CIS__AS_NMS_COPY = C_CIS.locateMethod().withName("asNMSCopy").withStatic(true).required();
+    F_PO_SS__WINDOW_ID        = getPacketClass().locateField().withType(int.class).required();
+    F_PO_SS__STATE_ID_OR_SLOT = getPacketClass().locateField().withType(int.class).withSkip(1).required();
+    F_POSS__SLOT              = getPacketClass().locateField().withType(int.class).withSkip(2).optional();
+    F_PO_SS__ITEM             = getPacketClass().locateField().withType(C_ITEM_STACK).required();
   }
 
   @Override
-  public CommunicatorResult sendToViewer(SetSlotParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
-    try {
-      Object packet = createPacket(parameter);
-      F_PO_SS__WINDOW_ID.set(packet, parameter.isTop() ? viewer.getCurrentWindowId() : -2);
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
+  protected Object createBasePacket(SetSlotParameter parameter) throws Exception {
+    Object packet = createPacket();
+
+    // FIXME: Is a state of zero really okay?
+    F_PO_SS__STATE_ID_OR_SLOT.set(packet, 0);
+
+    // If there is no third slot field, the state field becomes the slot field
+    (F_POSS__SLOT == null ? F_PO_SS__STATE_ID_OR_SLOT : F_POSS__SLOT).set(packet, parameter.getSlot());
+
+    // No personalized item, set ahead of time for all viewers
+    if (parameter.getPersonalizedItem() == null)
+      setItem(packet, parameter.getItem());
+
+    return packet;
   }
 
   @Override
-  public CommunicatorResult sendToViewers(SetSlotParameter parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
-    try {
-      Object packet = createPacket(parameter);
+  protected void personalizeBasePacket(Object packet, SetSlotParameter parameter, ICustomizableViewer viewer) throws Exception {
+    // Set personal window ID
+    F_PO_SS__WINDOW_ID.set(packet, parameter.isTop() ? viewer.getCurrentWindowId() : -2);
 
-      sendPacketsToReceivers(viewers, done, (viewer, subDone) -> {
-        F_PO_SS__WINDOW_ID.set(packet, parameter.isTop() ? viewer.getCurrentWindowId() : -2);
-        sendPacketsToReceiver(viewer, subDone, packet);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  @Override
-  public CommunicatorResult sendToPlayer(SetSlotParameter parameter, Player player, @Nullable Runnable done) {
-    return sendToViewer(parameter, interceptor.getPlayerAsViewer(player), done);
-  }
-
-  @Override
-  public CommunicatorResult sendToPlayers(SetSlotParameter parameter, Collection<? extends Player> players, @Nullable Runnable done) {
-    try {
-      Object packet = createPacket(parameter);
-
-      sendPacketsToReceivers(players, done, (player, subDone) -> {
-        ICustomizableViewer viewer = interceptor.getPlayerAsViewer(player);
-        F_PO_SS__WINDOW_ID.set(packet, parameter.isTop() ? viewer.getCurrentWindowId() : -2);
-        sendPacketsToReceiver(viewer, subDone, packet);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
+    // Set personalized item, if applicable
+    if (parameter.getPersonalizedItem() != null)
+      setItem(packet, parameter.getItem());
   }
 
   @Override
@@ -121,28 +85,17 @@ public class SetSlotCommunicator extends APacketCommunicator<SetSlotParameter> {
   }
 
   /**
-   * Create the packet base with the slot as well as the item set.
-   * @param parameter Parameter to extract the information from
-   * @return Constructed packet
+   * Sets the item field on a packet to a concrete value
+   * @param packet Packet to modify
+   * @param item Item value to set
    */
-  private Object createPacket(SetSlotParameter parameter) throws Exception {
-    // Create slot setting packet to move this fake book into the inventory
-    Object poss = helper.createEmptyPacket(C_PO_SS);
-
-    F_PO_SS__STATE_ID_OR_SLOT.set(poss, 0);
-
-    // If there is no third slot field, the state field becomes the slot field
-    (F_POSS__SLOT == null ? F_PO_SS__STATE_ID_OR_SLOT : F_POSS__SLOT).set(poss, parameter.getSlot());
-
+  private void setItem(Object packet, @Nullable ItemStack item) throws Exception {
     // Empty slots are encoded as AIR
-    ItemStack item = parameter.getItem();
     if (item == null)
       item = new ItemStack(Material.AIR);
 
     // Set the item as an NMS copy
-    Object craftStack = M_CIS__AS_NMS_COPY.invoke(null, item);
-    F_PO_SS__ITEM.set(poss, craftStack);
-
-    return poss;
+    Object craftStack = M_CRAFT_ITEM_STACK__AS_NMS_COPY.invoke(null, item);
+    F_PO_SS__ITEM.set(packet, craftStack);
   }
 }

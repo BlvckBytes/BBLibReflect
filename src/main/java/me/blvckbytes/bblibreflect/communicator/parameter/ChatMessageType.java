@@ -1,19 +1,10 @@
 package me.blvckbytes.bblibreflect.communicator.parameter;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
-import me.blvckbytes.bblibutil.component.IComponent;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.UUID;
-
 /*
   Author: BlvckBytes <blvckbytes@gmail.com>
-  Created On: 08/14/2022
+  Created On: 08/19/2022
 
-  A parameter used to define which JSON message to send in either the chat
-  or the action-bar when using the ChatCommunicator.
+  Represents all chat message type values.
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published
@@ -28,18 +19,11 @@ import java.util.UUID;
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-@Getter
-@Setter
-@AllArgsConstructor
-public class ChatMessageParameter implements ICommunicatorParameter {
+public enum ChatMessageType {
 
-  // Json message to be serialized
-  IComponent message;
-
-  // UUID of the sending player
-  @Nullable UUID sender;
-
-  // Where to display the message
-  ChatMessageType type;
+  CHAT,
+  SYSTEM,
+  ACTION_BAR
+  ;
 
 }

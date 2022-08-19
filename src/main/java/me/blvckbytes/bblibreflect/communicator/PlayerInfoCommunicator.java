@@ -1,20 +1,21 @@
 package me.blvckbytes.bblibreflect.communicator;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
-import me.blvckbytes.bblibreflect.*;
+import me.blvckbytes.bblibreflect.ICustomizableViewer;
+import me.blvckbytes.bblibreflect.IPacketInterceptor;
+import me.blvckbytes.bblibreflect.IReflectionHelper;
+import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.PlayerInfoParameter;
-import me.blvckbytes.bblibreflect.handle.*;
-import me.blvckbytes.bblibutil.Tuple;
+import me.blvckbytes.bblibreflect.handle.ClassHandle;
+import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
+import me.blvckbytes.bblibreflect.handle.EnumHandle;
+import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /*
@@ -42,11 +43,7 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
 
   private final EnumHandle E_ENUM_PLAYER_INFO_ACTION, E_ENUM_GAME_MODE;
 
-  private final ClassHandle C_PO_PLAYER_INFO;
-
   private final FieldHandle F_PO_PLAYER_INFO__ENUM, F_PO_PLAYER_INFO__LIST, F_PLAYER_INFO_DATA__COMPONENT;
-
-  private final MethodHandle M_CHAT_SERIALIZER__FROM_JSON, M_CRAFT_PLAYER__GET_PROFILE;
 
   private final ConstructorHandle CT_PLAYER_INFO_DATA;
 
@@ -55,96 +52,49 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
     @AutoInject IReflectionHelper helper,
     @AutoInject IPacketInterceptor interceptor
   ) throws Exception {
-    super(logger, helper, interceptor);
+    super(logger, helper, interceptor, true, helper.getClass(RClass.PACKET_O_PLAYER_INFO));
 
-    ClassHandle C_CHAT_SERIALIZER  = helper.getClass(RClass.CHAT_SERIALIZER);
-    ClassHandle C_CRAFT_PLAYER     = helper.getClass(RClass.CRAFT_PLAYER);
     ClassHandle C_PLAYER_INFO_DATA = helper.getClass(RClass.PLAYER_INFO_DATA);
     ClassHandle C_ENUM_GAME_MODE   = helper.getClass(RClass.ENUM_GAME_MODE);
     ClassHandle C_BASE_COMPONENT   = helper.getClass(RClass.I_CHAT_BASE_COMPONENT);
 
-    C_PO_PLAYER_INFO          = helper.getClass(RClass.PACKET_O_PLAYER_INFO);
     E_ENUM_PLAYER_INFO_ACTION = helper.getClass(RClass.ENUM_PLAYER_INFO_ACTION).asEnum();
     E_ENUM_GAME_MODE          = helper.getClass(RClass.ENUM_GAME_MODE).asEnum();
 
-    M_CHAT_SERIALIZER__FROM_JSON = C_CHAT_SERIALIZER.locateMethod().withParameters(JsonElement.class).withReturnType(C_BASE_COMPONENT, false, Assignability.TYPE_TO_TARGET).withStatic(true).required();
-    M_CRAFT_PLAYER__GET_PROFILE  = C_CRAFT_PLAYER.locateMethod().withName("getProfile").withReturnType(GameProfile.class).required();
-
-    F_PO_PLAYER_INFO__ENUM = C_PO_PLAYER_INFO.locateField().withType(E_ENUM_PLAYER_INFO_ACTION).required();
-    F_PO_PLAYER_INFO__LIST = C_PO_PLAYER_INFO.locateField().withType(List.class).withGeneric(C_PLAYER_INFO_DATA).required();
+    F_PO_PLAYER_INFO__ENUM = getPacketClass().locateField().withType(E_ENUM_PLAYER_INFO_ACTION).required();
+    F_PO_PLAYER_INFO__LIST = getPacketClass().locateField().withType(List.class).withGeneric(C_PLAYER_INFO_DATA).required();
     F_PLAYER_INFO_DATA__COMPONENT = C_PLAYER_INFO_DATA.locateField().withType(C_BASE_COMPONENT).required();
 
     CT_PLAYER_INFO_DATA = C_PLAYER_INFO_DATA.locateConstructor().withParameters(GameProfile.class, int.class).withParameters(C_ENUM_GAME_MODE, C_BASE_COMPONENT).required();
   }
 
   @Override
-  public CommunicatorResult sendToViewer(PlayerInfoParameter parameter, ICustomizableViewer viewer, @Nullable Runnable done) {
-    try {
-      Tuple<Object, List<Object>> packetT = createPacket(parameter);
-      Object packet = packetT.getA();
-      List<Object> playerInfoList = packetT.getB();
+  protected Object createBasePacket(PlayerInfoParameter parameter) throws Exception {
+    // Create a new packet instance and set the action, it will be the same for all viewers
+    Object packet = createPacket();
+    F_PO_PLAYER_INFO__ENUM.set(packet, E_ENUM_PLAYER_INFO_ACTION.getByCopy(parameter.getAction()));
 
-      personalizePlayerInfoList(playerInfoList, parameter, viewer);
-      viewer.sendPacket(packet, done);
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
+    // Create a new list of PlayerInfoData and set it's ref, it will also remain constant
+    List<Object> playerInfoList = new ArrayList<>();
+    F_PO_PLAYER_INFO__LIST.set(packet, playerInfoList);
+
+    // Just a single entry
+    if (parameter.getEntry() != null)
+      playerInfoList.add(createBasePlayerInfoData(parameter.getEntry()));
+
+      // Each entry maps to a player info data object
+    else if (parameter.getEntries() != null) {
+      for (PlayerInfoParameter.Entry entry : parameter.getEntries())
+        playerInfoList.add(createBasePlayerInfoData(entry));
     }
+
+    return packet;
   }
 
   @Override
-  public CommunicatorResult sendToViewers(PlayerInfoParameter parameter, Collection<? extends ICustomizableViewer> viewers, @Nullable Runnable done) {
-    try {
-      Tuple<Object, List<Object>> packetT = createPacket(parameter);
-      Object packet = packetT.getA();
-      List<Object> playerInfoList = packetT.getB();
+  protected void personalizeBasePacket(Object packet, PlayerInfoParameter parameter, ICustomizableViewer viewer) throws Exception {
+    List<?> playerInfoList = (List<?>) F_PO_PLAYER_INFO__LIST.get(packet);
 
-      sendPacketsToReceivers(viewers, done, (viewer, subDone) -> {
-        personalizePlayerInfoList(playerInfoList, parameter, viewer);
-        viewer.sendPacket(packet, subDone);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  @Override
-  public CommunicatorResult sendToPlayer(PlayerInfoParameter parameter, Player player, @Nullable Runnable done) {
-    return sendToViewer(parameter, interceptor.getPlayerAsViewer(player), done);
-  }
-
-  @Override
-  public CommunicatorResult sendToPlayers(PlayerInfoParameter parameter, Collection<? extends Player> players, @Nullable Runnable done) {
-    try {
-      Tuple<Object, List<Object>> packetT = createPacket(parameter);
-      Object packet = packetT.getA();
-      List<Object> playerInfoList = packetT.getB();
-
-      sendPacketsToReceivers(players, done, (player, subDone) -> {
-        ICustomizableViewer viewer = interceptor.getPlayerAsViewer(player);
-        personalizePlayerInfoList(playerInfoList, parameter, viewer);
-        viewer.sendPacket(packet, subDone);
-      });
-
-      return CommunicatorResult.SUCCESS;
-    } catch (Exception e) {
-      logger.logError(e);
-      return CommunicatorResult.REFLECTION_ERROR;
-    }
-  }
-
-  /**
-   * Personalize a list of player info objects by setting a personalized
-   * base component value for the provided viewer on each entry.
-   * @param playerInfoList Player info object list to personalize
-   * @param parameter Parameter to use for personalization
-   * @param viewer Viewer to personalize for
-   */
-  private void personalizePlayerInfoList(List<Object> playerInfoList, PlayerInfoParameter parameter, ICustomizableViewer viewer) throws Exception {
     // Just a single entry
     if (parameter.getEntry() != null) {
       PlayerInfoParameter.Entry entry = parameter.getEntry();
@@ -168,32 +118,9 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
     }
   }
 
-  /**
-   * Create the packet base with a list of player info objects which
-   * have all data set except the base component itself (has to be personalized).
-   * @param parameter Parameter to extract the information from
-   * @return Constructed packet
-   */
-  private Tuple<Object, List<Object>> createPacket(PlayerInfoParameter parameter) throws Exception {
-    // Create a new packet instance and set the action, it will be the same for all viewers
-    Object info = helper.createEmptyPacket(C_PO_PLAYER_INFO);
-    F_PO_PLAYER_INFO__ENUM.set(info, E_ENUM_PLAYER_INFO_ACTION.getByCopy(parameter.getAction()));
-
-    // Create a new list of PlayerInfoData and set it's ref, it will also remain constant
-    List<Object> playerInfoList = new ArrayList<>();
-    F_PO_PLAYER_INFO__LIST.set(info, playerInfoList);
-
-    // Just a single entry
-    if (parameter.getEntry() != null)
-      playerInfoList.add(createBasePlayerInfoData(parameter.getEntry()));
-
-    // Each entry maps to a player info data object
-    else if (parameter.getEntries() != null) {
-      for (PlayerInfoParameter.Entry entry : parameter.getEntries())
-        playerInfoList.add(createBasePlayerInfoData(entry));
-    }
-
-    return new Tuple<>(info, playerInfoList);
+  @Override
+  public Class<PlayerInfoParameter> getParameterType() {
+    return PlayerInfoParameter.class;
   }
 
   /**
@@ -209,10 +136,5 @@ public class PlayerInfoCommunicator extends APacketCommunicator<PlayerInfoParame
       E_ENUM_GAME_MODE.getByCopy(entry.resolveGameMode()),
       null
     );
-  }
-
-  @Override
-  public Class<PlayerInfoParameter> getParameterType() {
-    return PlayerInfoParameter.class;
   }
 }
