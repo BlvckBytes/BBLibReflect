@@ -10,10 +10,13 @@ import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.ICommunicatorParameter;
 import me.blvckbytes.bblibreflect.handle.Assignability;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
+import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibreflect.handle.MethodHandle;
 import me.blvckbytes.bblibutil.UnsafeSupplier;
 import me.blvckbytes.bblibutil.component.IComponent;
 import me.blvckbytes.bblibutil.logger.ILogger;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 /*
@@ -44,8 +47,15 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> {
   protected final IReflectionHelper helper;
   protected final IPacketInterceptor interceptor;
 
-  protected final MethodHandle M_CHAT_SERIALIZER__FROM_JSON, M_CRAFT_ITEM_STACK__AS_NMS_COPY, M_CRAFT_PLAYER__GET_PROFILE ;
-  protected final ClassHandle C_CHAT_SERIALIZER, C_BASE_COMPONENT, C_CRAFT_ITEM_STACK, C_ITEM_STACK, C_CRAFT_PLAYER;
+  protected final FieldHandle F_CRAFT_SERVER__MINECRAFT_SERVER;
+
+  protected final MethodHandle M_CHAT_SERIALIZER__FROM_JSON, M_CRAFT_ITEM_STACK__AS_NMS_COPY,
+    M_CRAFT_PLAYER__GET_PROFILE, M_CRAFT_PLAYER__GET_HANDLE ;
+
+  protected final ClassHandle C_CHAT_SERIALIZER, C_BASE_COMPONENT, C_CRAFT_ITEM_STACK, C_ITEM_STACK,
+    C_CRAFT_PLAYER, C_CRAFT_SERVER, C_MINECRAFT_SERVER, C_ENTITY_PLAYER;
+
+  protected final Object O_MINECRAFT_SERVER;
 
   @Getter
   private final ClassHandle packetType;
@@ -81,6 +91,9 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> {
     C_CRAFT_ITEM_STACK = helper.getClass(RClass.CRAFT_ITEM_STACK);
     C_ITEM_STACK       = helper.getClass(RClass.ITEM_STACK);
     C_CRAFT_PLAYER     = helper.getClass(RClass.CRAFT_PLAYER);
+    C_ENTITY_PLAYER    = helper.getClass(RClass.ENTITY_PLAYER);
+    C_CRAFT_SERVER     = helper.getClass(RClass.CRAFT_SERVER);
+    C_MINECRAFT_SERVER = helper.getClass(RClass.MINECRAFT_SERVER);
 
     M_CHAT_SERIALIZER__FROM_JSON = C_CHAT_SERIALIZER.locateMethod()
       .withParameters(JsonElement.class)
@@ -97,6 +110,14 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> {
       .withName("getProfile")
       .withReturnType(GameProfile.class)
       .required();
+
+    M_CRAFT_PLAYER__GET_HANDLE = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
+
+    F_CRAFT_SERVER__MINECRAFT_SERVER = C_CRAFT_SERVER.locateField()
+      .withType(C_MINECRAFT_SERVER, false, Assignability.TYPE_TO_TARGET)
+      .required();
+
+    O_MINECRAFT_SERVER = F_CRAFT_SERVER__MINECRAFT_SERVER.get(Bukkit.getServer());
   }
 
   //=========================================================================//
@@ -126,6 +147,15 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> {
   //=========================================================================//
 
   /**
+   * Get the entity player reference of a bukkit player
+   * @param p Target player
+   * @return Entity player reference
+   */
+  protected Object getEntityPlayer(Player p) throws Exception {
+    return M_CRAFT_PLAYER__GET_HANDLE.invoke(p);
+  }
+
+  /**
    * Create a new empty packet instance of the communicator's
    * managed packet type
    * @return Packet instance ready to use
@@ -144,6 +174,16 @@ public abstract class APacketCommunicator<T extends ICommunicatorParameter> {
    */
   public Object componentToBaseComponent(IComponent component, @Nullable ICustomizableViewer viewer) throws Exception {
     return M_CHAT_SERIALIZER__FROM_JSON.invoke(null, component.toJson(viewer == null || viewer.cannotRenderHexColors()));
+  }
+
+  /**
+   * Transform an internal component into it's json string representation
+   * @param component Component to transform
+   * @param viewer Viewer which is viewing this component, optional
+   * @return Component as a string
+   */
+  public String componentToJsonString(IComponent component, @Nullable ICustomizableViewer viewer) {
+    return component.toJson(viewer == null || viewer.cannotRenderHexColors()).toString();
   }
 }
 
