@@ -51,6 +51,18 @@ public enum RClass {
     "net.minecraft.network.chat.ChatMessageType",
     "net.minecraft.server.{v}.ChatMessageType"
   ),
+  FILTERED_TEXT(
+    "net.minecraft.server.network.FilteredText",
+    ""
+  ),
+  MESSAGE_SIGNATURE(
+    "net.minecraft.network.chat.MessageSignature",
+    ""
+  ),
+  PLAYER_CHAT_MESSAGE(
+    "net.minecraft.network.chat.PlayerChatMessage",
+    ""
+  ),
   NETWORK_MANAGER(
     "net.minecraft.network.NetworkManager",
     "net.minecraft.server.{v}.NetworkManager"
@@ -66,6 +78,14 @@ public enum RClass {
   PLAYER_CONNECTION(
     "net.minecraft.server.network.PlayerConnection",
     "net.minecraft.server.{v}.PlayerConnection"
+  ),
+  PLAYER_LIST(
+    "net.minecraft.server.players.PlayerList",
+    "net.minecraft.server.{v}.PlayerList"
+  ),
+  RESOURCE_KEY(
+    "net.minecraft.resources.ResourceKey",
+    ""
   ),
   PACKET_DATA_SERIALIZER(
     "net.minecraft.network.PacketDataSerializer",
@@ -147,6 +167,10 @@ public enum RClass {
     "net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket",
     ""
   ),
+  CLIENTBOUND_SYSTEM_CHAT_PACKET(
+    "net.minecraft.network.protocol.game.ClientboundSystemChatPacket",
+    ""
+  ),
   PACKET_I_B_EDIT(
     "net.minecraft.network.protocol.game.PacketPlayInBEdit",
     "net.minecraft.server.{v}.PacketPlayInBEdit"
@@ -166,6 +190,10 @@ public enum RClass {
   PACKET_I_KEEP_ALIVE(
     "net.minecraft.network.protocol.game.PacketPlayInKeepAlive",
     "net.minecraft.server.{v}.PacketPlayInKeepAlive"
+  ),
+  PACKET_I_CHAT(
+    "net.minecraft.network.protocol.game.PacketPlayInChat",
+    "net.minecraft.server.{v}.PacketPlayInChat"
   ),
   TILE_ENTITY_FURNACE(
     "net.minecraft.world.level.block.entity.TileEntityFurnace",
@@ -235,6 +263,10 @@ public enum RClass {
     "net.minecraft.world.level.EnumGamemode",
     "net.minecraft.server.{v}.EnumGamemode"
   ),
+  PROFILE_PUBLIC_KEY(
+    "net.minecraft.world.entity.player.ProfilePublicKey",
+    ""
+  )
   ;
 
   private final String afterRefactor, beforeRefactor;

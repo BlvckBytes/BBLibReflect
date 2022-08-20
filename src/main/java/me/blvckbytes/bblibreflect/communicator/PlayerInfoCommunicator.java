@@ -4,10 +4,7 @@ import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
-import me.blvckbytes.bblibreflect.ICustomizableViewer;
-import me.blvckbytes.bblibreflect.IPacketInterceptor;
-import me.blvckbytes.bblibreflect.IReflectionHelper;
-import me.blvckbytes.bblibreflect.RClass;
+import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.PlayerInfoParameter;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
@@ -16,6 +13,7 @@ import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,7 +64,18 @@ public class PlayerInfoCommunicator extends APacketOutCommunicator<PlayerInfoPar
     F_PO_PLAYER_INFO__LIST = getPacketType().locateField().withType(List.class).withGeneric(C_PLAYER_INFO_DATA).required();
     F_PLAYER_INFO_DATA__COMPONENT = C_PLAYER_INFO_DATA.locateField().withType(C_BASE_COMPONENT).required();
 
-    CT_PLAYER_INFO_DATA = C_PLAYER_INFO_DATA.locateConstructor().withParameters(GameProfile.class, int.class).withParameters(C_ENUM_GAME_MODE, C_BASE_COMPONENT).required();
+    if (ServerVersion.getCurrent().greaterThanOrEqual(ServerVersion.V1_19)) {
+      ClassHandle C_PROFILE_PUBLIC_KEY = helper.getClass(RClass.PROFILE_PUBLIC_KEY);
+      ClassHandle C_PROFILE_PUBLIC_KEY__FIRST_INNER = C_PROFILE_PUBLIC_KEY.locateClass().required();
+
+      CT_PLAYER_INFO_DATA = C_PLAYER_INFO_DATA.locateConstructor()
+        .withParameters(GameProfile.class, int.class)
+        .withParameters(C_ENUM_GAME_MODE, C_BASE_COMPONENT, C_PROFILE_PUBLIC_KEY__FIRST_INNER)
+        .required();
+    }
+
+    else
+      CT_PLAYER_INFO_DATA = C_PLAYER_INFO_DATA.locateConstructor().withParameters(GameProfile.class, int.class).withParameters(C_ENUM_GAME_MODE, C_BASE_COMPONENT).required();
   }
 
   @Override
@@ -131,6 +140,16 @@ public class PlayerInfoCommunicator extends APacketOutCommunicator<PlayerInfoPar
    */
   private Object createBasePlayerInfoData(PlayerInfoParameter.Entry entry) throws Exception {
     // Create the object with a null-component which is to be personalized later
+
+    if (ServerVersion.getCurrent().greaterThanOrEqual(ServerVersion.V1_19)) {
+      return CT_PLAYER_INFO_DATA.newInstance(
+        entry.resolveGameProfile(M_CRAFT_PLAYER__GET_PROFILE),
+        entry.resolveLatency(interceptor),
+        E_ENUM_GAME_MODE.getByCopy(entry.resolveGameMode()),
+        null, null
+      );
+    }
+
     return CT_PLAYER_INFO_DATA.newInstance(
       entry.resolveGameProfile(M_CRAFT_PLAYER__GET_PROFILE),
       entry.resolveLatency(interceptor),
