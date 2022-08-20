@@ -7,7 +7,7 @@ import lombok.Getter;
 import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibdi.IAutoConstructed;
-import me.blvckbytes.bblibreflect.communicator.*;
+import me.blvckbytes.bblibreflect.communicator.IPacketCommunicatorRegistry;
 import me.blvckbytes.bblibreflect.handle.Assignability;
 import me.blvckbytes.bblibreflect.handle.ClassHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
@@ -87,7 +87,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     F_SERVER_CONNECTION__FUTURE_LIST, F_PI_HANDSHAKE__VERSION,  F_PO_LOGIN__GAME_PROFILE, F_PO_OPEN_WINDOW__WINDOW_ID,
     F_PI_KEEP_ALIVE__ID, F_PO_KEEP_ALIVE__ID;
 
-  private final MethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET, M_CHANNEL_INITIALIZER__INIT_CHANNEL;
+  private final MethodHandle M_CRAFT_PLAYER__GET_HANDLE, M_NETWORK_MANAGER__SEND_PACKET,
+    M_CHANNEL_INITIALIZER__INIT_CHANNEL, M_NETWORK_MANAGER__RECEIVE_PACKET;
 
   private final ClassHandle C_PI_HANDSHAKE,  C_PO_OPEN_WINDOW, C_PO_LOGIN, C_PI_KEEP_ALIVE, C_PO_KEEP_ALIVE;
 
@@ -112,8 +113,9 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
     C_PO_KEEP_ALIVE  = reflection.getClass(RClass.PACKET_O_KEEP_ALIVE);
     C_PI_KEEP_ALIVE  = reflection.getClass(RClass.PACKET_I_KEEP_ALIVE);
 
-    M_CRAFT_PLAYER__GET_HANDLE     = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
-    M_NETWORK_MANAGER__SEND_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).withParameters(GenericFutureListener.class).required();
+    M_CRAFT_PLAYER__GET_HANDLE        = C_CRAFT_PLAYER.locateMethod().withName("getHandle").required();
+    M_NETWORK_MANAGER__SEND_PACKET    = C_NETWORK_MANAGER.locateMethod().withParameters(C_PACKET).withParameters(GenericFutureListener.class).required();
+    M_NETWORK_MANAGER__RECEIVE_PACKET = C_NETWORK_MANAGER.locateMethod().withParameters(ChannelHandlerContext.class).withParameters(C_PACKET).required();
 
     F_ENTITY_PLAYER__PLAYER_CONNECTION    = C_ENTITY_PLAYER.locateField().withType(C_PLAYER_CONNECTION).required();
     F_PLAYER_CONNECTION__NETWORK_MANAGER  = C_PLAYER_CONNECTION.locateField().withType(C_NETWORK_MANAGER).required();
@@ -327,7 +329,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
 
       // Create a new intercepted viewer
       InterceptedViewer viewer = new InterceptedViewer(
-        channel, networkManager, logger, M_NETWORK_MANAGER__SEND_PACKET
+        channel, networkManager, logger,
+        M_NETWORK_MANAGER__SEND_PACKET, M_NETWORK_MANAGER__RECEIVE_PACKET
       );
 
       // Try to look up the previous client version in the cache
@@ -520,7 +523,8 @@ public class PacketInterceptor implements IPacketInterceptor, IPacketModifier, L
             // Let's just assume it's going to be a player
             // UUID is staying null otherwise, which signals that it's a player-less receiver
             InterceptedViewer viewer = new InterceptedViewer(
-              ch, networkManager, logger, M_NETWORK_MANAGER__SEND_PACKET
+              ch, networkManager, logger,
+              M_NETWORK_MANAGER__SEND_PACKET, M_NETWORK_MANAGER__RECEIVE_PACKET
             );
 
             injectChannel(viewer);

@@ -36,7 +36,7 @@ public class InterceptedViewer implements ICustomizableViewer {
   private final Channel channel;
   private final Object networkManager;
   private final ILogger logger;
-  private final MethodHandle M_NETWORK_MANAGER__SEND_PACKET;
+  private final MethodHandle M_NETWORK_MANAGER__SEND_PACKET, M_NETWORK_MANAGER__RECEIVE_PACKET ;
 
   @Setter private @Nullable UUID uuid;
   @Setter private int clientVersion;
@@ -50,9 +50,11 @@ public class InterceptedViewer implements ICustomizableViewer {
     Channel channel,
     Object networkManager,
     ILogger logger,
-    MethodHandle M_NETWORK_MANAGER__SEND_PACKET
+    MethodHandle M_NETWORK_MANAGER__SEND_PACKET,
+    MethodHandle M_NETWORK_MANAGER__RECEIVE_PACKET
   ) {
     this.M_NETWORK_MANAGER__SEND_PACKET = M_NETWORK_MANAGER__SEND_PACKET;
+    this.M_NETWORK_MANAGER__RECEIVE_PACKET = M_NETWORK_MANAGER__RECEIVE_PACKET;
     this.channel = channel;
     this.networkManager = networkManager;
     this.logger = logger;
@@ -84,8 +86,21 @@ public class InterceptedViewer implements ICustomizableViewer {
 
   @Override
   public void receivePacket(Object packet, @Nullable Runnable received) {
-    // TODO: Implement
-    throw new UnsupportedOperationException();
+    if (!channel.isOpen()) {
+      // Release the packet resource again, if applicable
+      if (received != null)
+        received.run();
+      return;
+    }
+
+    try {
+      M_NETWORK_MANAGER__RECEIVE_PACKET.invoke(null, packet);
+
+      if (received != null)
+        received.run();
+    } catch (Exception e) {
+      logger.logError(e);
+    }
   }
 
   @Override
