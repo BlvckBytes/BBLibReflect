@@ -129,6 +129,15 @@ public enum ServerVersion {
   }
 
   /**
+   * Checks whether this version is greater than or equal to another version
+   * @param other Version to compare against
+   * @return True if greater or equal, false if smaller
+   */
+  public boolean greaterThanOrEqual(ServerVersion other) {
+    return ordinal() >= other.ordinal();
+  }
+
+  /**
    * Checks whether this version is greater than another version
    * @param other Version to compare against
    * @return True if greater, false if smaller or equal
@@ -144,6 +153,15 @@ public enum ServerVersion {
    */
   public boolean lessThan(ServerVersion other) {
     return ordinal() < other.ordinal();
+  }
+
+  /**
+   * Checks whether this version is less than or equal to another version
+   * @param other Version to compare against
+   * @return True if less or equal, false if greater
+   */
+  public boolean lessThanOrEqual(ServerVersion other) {
+    return ordinal() <= other.ordinal();
   }
 
   /**
