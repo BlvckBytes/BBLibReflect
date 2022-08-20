@@ -7,6 +7,7 @@ import me.blvckbytes.bblibreflect.IPacketInterceptor;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.TitleTitleParameter;
+import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +35,7 @@ import org.jetbrains.annotations.Nullable;
 public class TitleTitleCommunicator extends ATitleBaseCommunicator<TitleTitleParameter> {
 
   private final FieldHandle F_CLB_TITLE__BASE_COMPONENT, F_PO_TITLE__BASE_COMPONENT;
+  private final ConstructorHandle CTOR_CLB_TITLE;
 
   public TitleTitleCommunicator(
     @AutoInject ILogger logger,
@@ -44,17 +46,31 @@ public class TitleTitleCommunicator extends ATitleBaseCommunicator<TitleTitlePar
 
     if (isNewer) {
       F_CLB_TITLE__BASE_COMPONENT = getPacketType().locateField().withType(C_BASE_COMPONENT).required();
+      CTOR_CLB_TITLE = getPacketType().locateConstructor().withParameters(C_BASE_COMPONENT).optional();
       F_PO_TITLE__BASE_COMPONENT  = null;
     }
 
     else {
       F_PO_TITLE__BASE_COMPONENT  = getPacketType().locateField().withType(C_BASE_COMPONENT).required();
       F_CLB_TITLE__BASE_COMPONENT = null;
+      CTOR_CLB_TITLE = null;
     }
   }
 
   @Override
+  protected Object createBasePacket(TitleTitleParameter parameter) throws Exception {
+    if (CTOR_CLB_TITLE != null)
+      return CTOR_CLB_TITLE.newInstance(componentToBaseComponent(parameter.getTitle(), null));
+
+    return super.createPacket();
+  }
+
+  @Override
   protected void personalizeBasePacket(Object packet, TitleTitleParameter parameter, ICustomizableViewer viewer) throws Exception {
+    // FIXME: Cannot personalize the record... would need to create newly, make personalizeBasePacket return an Object.
+    if (CTOR_CLB_TITLE != null)
+      return;
+
     Object titleComponent = componentToBaseComponent(parameter.getTitle(), viewer);
 
     if (F_PO_TITLE__BASE_COMPONENT != null)

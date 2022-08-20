@@ -4,6 +4,7 @@ import me.blvckbytes.bblibdi.AutoConstruct;
 import me.blvckbytes.bblibdi.AutoInject;
 import me.blvckbytes.bblibreflect.*;
 import me.blvckbytes.bblibreflect.communicator.parameter.TitleSubtitleParameter;
+import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.jetbrains.annotations.Nullable;
@@ -31,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 public class TitleSubtitleCommunicator extends ATitleBaseCommunicator<TitleSubtitleParameter> {
 
   private final FieldHandle F_CLB_SUBTITLE__BASE_COMPONENT, F_PO_SUBTITLE__BASE_COMPONENT;
+  private final ConstructorHandle CTOR_CLB_SUBTITLE;
 
   public TitleSubtitleCommunicator(
     @AutoInject ILogger logger,
@@ -41,13 +43,23 @@ public class TitleSubtitleCommunicator extends ATitleBaseCommunicator<TitleSubti
 
     if (isNewer) {
       F_CLB_SUBTITLE__BASE_COMPONENT = getPacketType().locateField().withType(C_BASE_COMPONENT).required();
+      CTOR_CLB_SUBTITLE = getPacketType().locateConstructor().withParameters(C_BASE_COMPONENT).optional();
       F_PO_SUBTITLE__BASE_COMPONENT  = null;
     }
 
     else {
       F_PO_SUBTITLE__BASE_COMPONENT  = getPacketType().locateField().withType(C_BASE_COMPONENT).withSkip(1).required();
+      CTOR_CLB_SUBTITLE = null;
       F_CLB_SUBTITLE__BASE_COMPONENT = null;
     }
+  }
+
+  @Override
+  protected Object createBasePacket(TitleSubtitleParameter parameter) throws Exception {
+    if (CTOR_CLB_SUBTITLE != null)
+      return CTOR_CLB_SUBTITLE.newInstance(componentToBaseComponent(parameter.getSubtitle(), null));
+
+    return super.createPacket();
   }
 
   @Override

@@ -7,6 +7,7 @@ import me.blvckbytes.bblibreflect.IPacketInterceptor;
 import me.blvckbytes.bblibreflect.IReflectionHelper;
 import me.blvckbytes.bblibreflect.RClass;
 import me.blvckbytes.bblibreflect.communicator.parameter.TitleTimingsParameter;
+import me.blvckbytes.bblibreflect.handle.ConstructorHandle;
 import me.blvckbytes.bblibreflect.handle.FieldHandle;
 import me.blvckbytes.bblibutil.logger.ILogger;
 import org.jetbrains.annotations.Nullable;
@@ -36,6 +37,8 @@ public class TitleTimingsCommunicator extends ATitleBaseCommunicator<TitleTiming
   private final FieldHandle F_CLB_ANIMATION__FADE_IN, F_CLB_ANIMATION__DURATION,
     F_CLB_ANIMATION__FADE_OUT, F_PO_TITLE__FADE_IN, F_PO_TITLE__DURATION, F_PO_TITLE__FADE_OUT;
 
+  private final ConstructorHandle CTOR_CLB_ANIMATION;
+
   public TitleTimingsCommunicator(
     @AutoInject ILogger logger,
     @AutoInject IReflectionHelper helper,
@@ -47,6 +50,7 @@ public class TitleTimingsCommunicator extends ATitleBaseCommunicator<TitleTiming
       F_CLB_ANIMATION__FADE_IN  = getPacketType().locateField().withType(int.class).required();
       F_CLB_ANIMATION__DURATION = getPacketType().locateField().withType(int.class).withSkip(1).required();
       F_CLB_ANIMATION__FADE_OUT = getPacketType().locateField().withType(int.class).withSkip(2).required();
+      CTOR_CLB_ANIMATION = getPacketType().locateConstructor().withParameters(int.class, int.class, int.class).optional();
 
       F_PO_TITLE__FADE_IN  = null;
       F_PO_TITLE__DURATION = null;
@@ -58,6 +62,7 @@ public class TitleTimingsCommunicator extends ATitleBaseCommunicator<TitleTiming
       F_PO_TITLE__DURATION = getPacketType().locateField().withType(int.class).required();
       F_PO_TITLE__FADE_OUT = getPacketType().locateField().withType(int.class).required();
 
+      CTOR_CLB_ANIMATION = null;
       F_CLB_ANIMATION__FADE_IN  = null;
       F_CLB_ANIMATION__DURATION = null;
       F_CLB_ANIMATION__FADE_OUT = null;
@@ -66,6 +71,9 @@ public class TitleTimingsCommunicator extends ATitleBaseCommunicator<TitleTiming
 
   @Override
   protected Object createBasePacket(TitleTimingsParameter parameter) throws Exception {
+    if (CTOR_CLB_ANIMATION != null)
+      return CTOR_CLB_ANIMATION.newInstance(parameter.getFadeIn(), parameter.getDuration(), parameter.getFadeOut());
+
     Object packet = super.createBasePacket(parameter);
 
     if (isNewer) {
