@@ -41,7 +41,54 @@ public class ClassHandle {
   protected final Class<?> c;
 
   /**
-   * Get the encapsulated field directly
+   * Create a new class handle by locating the target class within
+   * the given target class by dispatching the predicate immediately.
+   * @param target Target class to search in
+   * @param predicate Predicate which chooses the matching class
+   * @throws ClassNotFoundException Thrown if the predicate didn't yield any results
+   */
+  public ClassHandle(Class<?> target, IClassPredicate predicate) throws ClassNotFoundException {
+    if (target == null)
+      throw new IllegalStateException("Target has to be present.");
+
+    int counter = 0;
+    Class<?> res = null;
+
+    // Walk up the hierarchy chain
+    Class<?> curr = target;
+    while (res == null && curr != null && curr != Object.class) {
+
+      // Loop all inner classes of the current class
+      for (Class<?> c : curr.getDeclaredClasses()) {
+        Boolean result = predicate.matches(c, counter);
+
+        // Null means that it would have matched, but the
+        // skip counter has not yet elapsed
+        if (result == null) {
+          counter++;
+          continue;
+        }
+
+        // Predicate match, take the class
+        if (result) {
+          res = c;
+          break;
+        }
+      }
+
+      curr = curr.getSuperclass();
+    }
+
+    // The predicate matched on none of them
+    if (res == null)
+      throw new ClassNotFoundException("Could not satisfy the class predicate.");
+
+    // Hold a reference to it
+    this.c = res;
+  }
+
+  /**
+   * Get the encapsulated class directly
    */
   public Class<?> get() {
     return this.c;
@@ -93,6 +140,13 @@ public class ClassHandle {
    */
   public ConstructorPredicateBuilder locateConstructor() {
     return new ConstructorPredicateBuilder(this);
+  }
+
+  /**
+   * Create a new ClassHandle builder which will query this class
+   */
+  public ClassPredicateBuilder locateClass() {
+    return new ClassPredicateBuilder(this);
   }
 
   @Override
