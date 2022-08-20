@@ -94,7 +94,7 @@ public class InterceptedViewer implements ICustomizableViewer {
     }
 
     try {
-      M_NETWORK_MANAGER__RECEIVE_PACKET.invoke(null, packet);
+      M_NETWORK_MANAGER__RECEIVE_PACKET.invoke(networkManager, null, packet);
 
       if (received != null)
         received.run();
