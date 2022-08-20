@@ -61,24 +61,36 @@ public abstract class APacketInCommunicator<T extends ICommunicatorParameter> ex
   }
 
   /**
+   * Central point of redirecting packets to be received to the central API
+   * @param receiver Sending receiver
+   * @param parameter Parameter which parameterized the packet
+   * @param packet Target packet
+   * @param done Optional callback, called on completion
+   */
+  protected void receivePacket(IPacketReceiver receiver, T parameter, Object packet, @Nullable Runnable done) {
+    receiver.receivePacket(packet, done);
+  }
+
+  /**
    * Receives multiple packets from a given receiver and, if required, synchronizes
    * their completion callback to only invoke the provided callback after all packets completed
    * @param receiver Target receiver to receive from
+   * @param parameter Parameter which parameterized the packet
    * @param done Optional callback, called when all packets are done
    * @param packets Packets to receive
    */
-  protected void receivePacketsFromReceiver(IPacketReceiver receiver, @Nullable Runnable done, Object... packets) {
+  protected void receivePacketsFromReceiver(IPacketReceiver receiver, T parameter, @Nullable Runnable done, Object... packets) {
     // No callback required, just perform a sending invocation
     if (done == null) {
       for (Object packet : packets)
-        receiver.receivePacket(packet, null);
+        receivePacket(receiver, parameter, packet, null);
       return;
     }
 
     AtomicInteger completionCount = new AtomicInteger(0);
 
     for (Object packet : packets) {
-      receiver.receivePacket(packet, () -> {
+      receivePacket(receiver, parameter, packet, () -> {
         // Check if it's the last packet that completed, if so, call the callback
         if (completionCount.incrementAndGet() == packets.length)
           done.run();
@@ -129,7 +141,7 @@ public abstract class APacketInCommunicator<T extends ICommunicatorParameter> ex
     try {
       Object packet = createBasePacket(parameter);
 
-      receivePacketsFromReceiver(receiver, done, packet);
+      receivePacketsFromReceiver(receiver, parameter, done, packet);
 
       return CommunicatorResult.SUCCESS;
     } catch (Exception e) {
@@ -154,7 +166,7 @@ public abstract class APacketInCommunicator<T extends ICommunicatorParameter> ex
       Object packet = createBasePacket(parameter);
 
       receivePacketsFromReceivers(receivers, done, (receiver, subDone) -> {
-        receivePacketsFromReceiver(receiver, subDone, packet);
+        receivePacketsFromReceiver(receiver, parameter, subDone, packet);
       });
 
       return CommunicatorResult.SUCCESS;
@@ -180,7 +192,7 @@ public abstract class APacketInCommunicator<T extends ICommunicatorParameter> ex
         personalizeBasePacket(packet, parameter, viewer);
       } catch (UnsupportedOperationException ignored) {}
 
-      receivePacketsFromReceiver(viewer, done, packet);
+      receivePacketsFromReceiver(viewer, parameter, done, packet);
 
       return CommunicatorResult.SUCCESS;
     } catch (Exception e) {
@@ -206,7 +218,7 @@ public abstract class APacketInCommunicator<T extends ICommunicatorParameter> ex
           personalizeBasePacket(packet, parameter, viewer);
         } catch (UnsupportedOperationException ignored) {}
 
-        receivePacketsFromReceiver(viewer, subDone, packet);
+        receivePacketsFromReceiver(viewer, parameter, subDone, packet);
       });
 
       return CommunicatorResult.SUCCESS;
@@ -246,7 +258,7 @@ public abstract class APacketInCommunicator<T extends ICommunicatorParameter> ex
           personalizeBasePacket(packet, parameter, viewer);
         } catch (UnsupportedOperationException ignored) {}
 
-        receivePacketsFromReceiver(viewer, subDone, packet);
+        receivePacketsFromReceiver(viewer, parameter, subDone, packet);
       });
 
       return CommunicatorResult.SUCCESS;
