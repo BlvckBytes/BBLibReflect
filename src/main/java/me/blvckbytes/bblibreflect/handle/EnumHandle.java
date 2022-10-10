@@ -25,6 +25,7 @@ import java.util.List;
 public class EnumHandle extends ClassHandle {
 
   // TODO: Check against enum copies if they match the number of entries, else throw
+  // TODO: Get an "enum" from static constants of a specific type within a class
 
   private final List<Enum<?>> e;
 

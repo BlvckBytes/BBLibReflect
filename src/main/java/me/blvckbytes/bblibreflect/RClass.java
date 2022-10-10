@@ -41,7 +41,7 @@ public enum RClass {
   ),
   I_CHAT_BASE_COMPONENT(
     "net.minecraft.network.chat.IChatBaseComponent",
-    "net.minecraft.server.{v}.NetworkManager"
+    "net.minecraft.server.{v}.IChatBaseComponent"
   ),
   CHAT_SERIALIZER(
     "net.minecraft.network.chat.IChatBaseComponent$ChatSerializer",
